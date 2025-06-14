@@ -1,0 +1,4 @@
+*.log
+.scriptlauncher/site.properties
+target/*
+
