@@ -19,9 +19,14 @@ import java.util.concurrent.TimeUnit;
 public class TCPClient {
     /*
     * This class creates a TCP Client for sending and receiving data to a server
-    *  that is running of the network. It has a function for sending messages
-    *  as well as a seperate thread that runs continuously looking for input from
-    *  the server and sending it to an external function to process the data.
+    *  that is running on the network. 
+    * It runs in a seperate thread for waiting for a connection to be established,
+    *  so the caller returns immediately rather than being hung waiting for the
+    *  connection to be established.
+    * It also runs a continuous loop for checking for input from the established
+    *  connection and forwards those messages on to an external parser for handling
+    *  the messages.
+    * There is also a function included for sending messages to the connection.
     */
 
     private int tcpPort;
@@ -40,27 +45,6 @@ public class TCPClient {
         tcpPort = port;
         System.out.println("Checking for TCP connection on port " + tcpPort + "...");
         connectThread.start();
-//        while (true) {
-//            try {
-//                socket = new Socket("localhost", tcpPort);
-//                break;
-//            } catch (IOException exMsg) {
-//                try {
-//                    TimeUnit.SECONDS.sleep(5);
-//                } catch (InterruptedException ex) {
-//                    System.exit(0);
-//                }
-//            }
-//        }
-//        System.out.println("Successfully connected to the TCP server on port " + tcpPort);
-//        GuiPanel.serverConnected();
-//
-//        // Set up input and output streams for communication
-//        in_socket  = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//        out_socket = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
-//
-//        // start the listener thread
-//        runThread.start();
     }
     
     public void sendMessage (String message) {
