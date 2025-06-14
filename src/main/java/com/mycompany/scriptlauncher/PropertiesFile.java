@@ -25,7 +25,7 @@ public class PropertiesFile {
     */
 
     // the location of the properties file for this application
-    final static private String PROPERTIES_PATH = ".dandebug/";
+    final static private String PROPERTIES_PATH = ".scriptlauncher/";
     final static private String PROPERTIES_FILE = "site.properties";
 
     private Properties   props;

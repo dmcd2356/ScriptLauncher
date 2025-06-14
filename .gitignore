@@ -1,4 +1,4 @@
 *.log
-.scriptlauncher/site.properties
-target/*
+.scriptlauncher/
+target/
 

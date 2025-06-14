@@ -7,13 +7,11 @@ package com.mycompany.scriptlauncher;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -140,8 +138,7 @@ public class GuiPanel {
         fileSelector = new JFileChooser();
 
         // disable the buttons that require a connection
-        procState = ProcState.STARTUP;
-        setState (null);
+        setState ("STARTUP");
         
         // setup the control actions
         guiControls.getFrame().addWindowListener(new java.awt.event.WindowAdapter() {
@@ -321,24 +318,18 @@ public class GuiPanel {
         }
         
         JButton button;
-        if (state == null) {
-            switch (procState) {
-                case STARTUP:
-                    enableButton(true , "BTN_CONNECT");
-                    enableButton(false, "BTN_LOAD");
-                    enableButton(false, "BTN_COMPILE");
-                    enableButton(false, "BTN_RUN");
-                    enableButton(false, "BTN_PAUSE");
-                    enableButton(false, "BTN_STEP");
-                    enableButton(false, "BTN_BREAKPT");
-                    enableButton(false, "BTN_EXIT");
-                    break;
-                default:
-                    break;
-            }
-            return;
-        }
         switch (state) {
+            case "STARTUP":
+                procState = ProcState.STARTUP;
+                enableButton(true , "BTN_CONNECT");
+                enableButton(false, "BTN_LOAD");
+                enableButton(false, "BTN_COMPILE");
+                enableButton(false, "BTN_RUN");
+                enableButton(false, "BTN_PAUSE");
+                enableButton(false, "BTN_STEP");
+                enableButton(false, "BTN_BREAKPT");
+                enableButton(false, "BTN_EXIT");
+                break;
             case "CONNECTED":
                 connected = true;
                 updateStateLabel (state);
