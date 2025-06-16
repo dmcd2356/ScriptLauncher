@@ -250,6 +250,7 @@ public class GuiPanel {
         // now init the debug message handler and the script file handler
         Logger.init(debugPane);
         Script.init(scriptPane);
+        Variables.init(varPane);
 
         // check for a properties file
         props = new PropertiesFile();
@@ -549,16 +550,19 @@ public class GuiPanel {
                     setStatusText(true, "Invalid format for LOGMSG command");
                     break;
                 }
-                message = message.substring(7);
+                message = message.substring(8);
                 Logger.print(message);
                 break;
             case "ALLOC:":
                 // extract the variable info and add to screen
-                // TODO:
+                message = message.substring(7);
+                Variables.allocationMessage(message);
                 break;
             case "VARMSG:":
-                // extract the variable info and add to screen
+                // extract the variable info and modify displated entries in red
                 // TODO:
+                message = message.substring(8);
+                //Variables.print(message);
                 break;
             default:
                 setStatusText(true, "Invalid command: " + command);

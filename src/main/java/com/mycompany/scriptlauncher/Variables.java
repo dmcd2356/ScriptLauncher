@@ -5,11 +5,8 @@
 package com.mycompany.scriptlauncher;
 
 import java.awt.Graphics;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.JTextPane;
 
@@ -25,7 +22,14 @@ public class Variables {
     
     private static JTextPane textPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
+    private static String section = null;
 
+    private static ArrayList<VarAccess>     varReserved = new ArrayList<>();
+    private static ArrayList<VarAccess>     varGlobal   = new ArrayList<>();
+    private static ArrayList<VarAccess>     varLocal    = new ArrayList<>();
+    private static ArrayList<VarAccess>     varLoop     = new ArrayList<>();
+    private static HashMap<String, Integer> subroutines = new HashMap<>();
+    
     private enum MessageType {
         Prefix,         // the line counter value
         Comment,        // a comment line
@@ -46,14 +50,21 @@ public class Variables {
         textPane = textpane;
         setColors();
     }
-    
+
+    public static void addSubroutine (String name, Integer lineNum) {
+        subroutines.put(name, lineNum);
+    }
+
     /**
      * clears the display.
      */
-    public static final void clear() {
-        if (textPane != null) {
-            textPane.setText("");
-        }
+    private static void reset() {
+        // reset the variable info gathered from the server
+        varReserved = new ArrayList<>();
+        varGlobal   = new ArrayList<>();
+        varLocal    = new ArrayList<>();
+        varLoop     = new ArrayList<>();
+        subroutines = new HashMap<>();
     }
 
     /**
@@ -65,38 +76,6 @@ public class Variables {
             if (graphics != null) {
                 textPane.update(graphics);
             }
-        }
-    }
-
-    /**
-     * outputs the script file contents to the Script display.
-     * 
-     * @param file   - the script file contents to display
-     */
-    public static final void print(File file) {
-        try {
-            // read file into array
-            FileReader fReader = new FileReader(file);
-            BufferedReader fileReader = new BufferedReader(fReader);
-            String message;
-            int lineNum = 1;
-            while ((message = fileReader.readLine()) != null) {
-                // save line in array
-                // TODO:
-                
-                // output line to display
-                print(lineNum, message);
-                lineNum++;
-            }
-
-            // read file and display contents to Screen Pane
-                
-            // now send file to AmazonReader
-            //TODO:
-        } catch (FileNotFoundException exMsg) {
-            // TODO: display error
-        } catch (IOException exMsg) {
-            // TODO: display error
         }
     }
 
@@ -127,54 +106,250 @@ public class Variables {
         }
         return word;
     }
+
+    private static String addTabPadding (int tab, String line) {
+        String padding = "                                        ";
+        if (line.length() >= tab) {
+            return line + " ";
+        }
+        line = line + padding;
+        line = line.substring(0, tab);
+        return line;
+    }
     
     /**
-     * outputs the various types of messages to the Script display.
+     * displays the variables received.
+     */
+    public static final void print() {
+        if (textPane == null) {
+            return;
+        }
+        
+        // first, clear the display the display
+        textPane.setText("");
+
+        // set the tab stops
+        int tab1 = 25;  // handles variable names up to 24 in length
+        int tab2 = 40;  // handles subroutines up to 14 in length
+        
+        // now display each section
+        String title = addTabPadding (tab2, addTabPadding (tab1, "Variable name") + "Owner") + "Data type";
+        if (! varReserved.isEmpty()) {
+            printType(MessageType.Prefix, true, "=== RESERVED ============================================================");
+            printType(MessageType.Prefix, true, title);
+            printType(MessageType.Prefix, true, "_________________________________________________________________________");
+            for (int ix = 0; ix < varReserved.size(); ix++) {
+                VarAccess varInfo = varReserved.get(ix);
+                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + "----") + varInfo.getType();
+                printType(MessageType.Prefix, true, line);
+            }
+        }
+        if (! varGlobal.isEmpty()) {
+            printType(MessageType.Prefix, true, "=== GLOBALS =============================================================");
+            printType(MessageType.Prefix, true, title);
+            printType(MessageType.Prefix, true, "_________________________________________________________________________");
+            for (int ix = 0; ix < varGlobal.size(); ix++) {
+                VarAccess varInfo = varGlobal.get(ix);
+                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + varInfo.getType();
+                printType(MessageType.Prefix, true, line);
+            }
+        }
+        if (! varLocal.isEmpty()) {
+            printType(MessageType.Prefix, true, "=== LOCALS ==============================================================");
+            printType(MessageType.Prefix, true, title);
+            printType(MessageType.Prefix, true, "_________________________________________________________________________");
+            for (int ix = 0; ix < varLocal.size(); ix++) {
+                VarAccess varInfo = varLocal.get(ix);
+                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + varInfo.getType();
+                printType(MessageType.Prefix, true, line);
+            }
+        }
+        if (! varLoop.isEmpty()) {
+            printType(MessageType.Prefix, true, "=== LOOPS ===============================================================");
+            printType(MessageType.Prefix, true, title);
+            printType(MessageType.Prefix, true, "_________________________________________________________________________");
+            for (int ix = 0; ix < varLoop.size(); ix++) {
+                VarAccess varInfo = varLoop.get(ix);
+                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + "Integer";
+                printType(MessageType.Prefix, true, line);
+            }
+        }
+    }
+    
+    /**
+     * parses and saves the variable allocation information.
      * 
-     * @param linenum   - the message counter
      * @param message   - the message contents
      */
-    public static final void print(int linenum, String message) {
-        if (textPane != null && message != null) {
-            // extract the packet count, elapsed time, and message type from the string
-            String countstr = "000" + Integer.toString(linenum);
-            countstr = countstr.substring(countstr.length() - 3);
-            MessageType curType;
-            String msgClone = message.strip();
-            
-            // font settings for timestamp and data type
-            printType (MessageType.Prefix, msgClone.isEmpty(), countstr + "   ");
-
-            // get 1st non-space char
-            if (msgClone.startsWith("#")) {
-                printType(MessageType.Comment, true, message);
+    public static final void allocationMessage (String message) {
+        if (textPane != null && message != null && ! message.isEmpty()) {
+            if (message.charAt(0) == '<' && message.charAt(message.length()-1) == '>') {
+                String entry = message.substring(1, message.length()-1);
+                switch (entry) {
+                    case "RESERVED":
+                    case "GLOBAL":
+                    case "LOCAL":
+                    case "LOOP":
+                        // save the section
+                        section = entry;
+                        break;
+                    case "START":
+                        reset();
+                        break;
+                    case "END":
+                        // allocation info complete - now format and print it
+                        section = null;
+                        print();
+                        break;
+                    default:
+                        section = null;
+                        GuiPanel.setStatusText(true, "Invalid message received");
+                }
+                return;
+            } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
+                if (section == null) {
+                    GuiPanel.setStatusText(true, "Missing section name");
+                    return;
+                }
+                message = message.substring(1, message.length()-1);
+                var array = new ArrayList<String>(Arrays.asList(message.split(",")));
+                allocationEntryMsg (array);
                 return;
             }
-            
-            // break line into words
-            int ix = 0;
-            while (! message.isBlank()) {
-                String nextWord = getNextWord(message);
-                message = message.substring(nextWord.length());
-                if (ix == 0) {
-                    if (nextWord.startsWith("-")) {
-                        curType = MessageType.CmdOption;
-                        printType(curType, message.isBlank(), nextWord);
-                    } else if (CommandList.isValidCommand(nextWord.strip()) != null) {
-                        curType = MessageType.Command;
-                        printType(curType, message.isBlank(), nextWord);
-                    }else {
-                        curType = MessageType.Reference;
-                        printType(curType, message.isBlank(), nextWord);
-                    }
-                } else if (nextWord.strip().startsWith("$")) {
-                    curType = MessageType.Reference;
-                    printType(curType, message.isBlank(), nextWord);
-                } else {
-                    curType = MessageType.Normal;
-                    printType(curType, message.isBlank(), nextWord);
+        }
+        GuiPanel.setStatusText(true, "Invalid message received");
+    }
+
+    /**
+     * outputs the various types of messages to be saved in the variable listing.
+     * 
+     * @param contents   - the message contents
+     */
+    public static final void allocationEntryMsg (ArrayList<String> contents) {
+        if (textPane != null && contents != null && ! contents.isEmpty()) {
+            String name = null;
+            String type = null;
+            String owner = null;
+            String value = null;
+            String writer = null;
+            String line = null;
+            String time = null;
+            for (int ix = 0; ix < contents.size(); ix++) {
+                String entry = contents.get(ix).strip();
+                int offset = entry.indexOf(' ');
+                if (offset <= 0) {
+                    GuiPanel.setStatusText(true, "Invalid message received");
+                    return;
                 }
-                ix++;
+                String key  = entry.substring(0, offset).strip();
+                String item = entry.substring(offset).strip();
+                switch (key) {
+                    case "<name>":
+                        name = item;
+                        break;
+                    case "<type>":
+                        type = item;
+                        break;
+                    case "<owner>":
+                        owner = item;
+                        break;
+                    case "<value>":
+                        value = item;
+                        break;
+                    case "<writer>":
+                        writer = item;
+                        break;
+                    case "<line>":
+                        line = item;
+                        break;
+                    case "<time>":
+                        time = item;
+                        break;
+                    default:
+                        GuiPanel.setStatusText(true, "Invalid message received");
+                        return;
+                }
+            }
+            if (name == null) {
+                GuiPanel.setStatusText(true, "Invalid message received");
+                return;
+            }
+
+            if (value == null) {
+                // new allocation
+                VarAccess varInfo = new VarAccess(name, type, owner);
+                switch (section) {
+                    case "RESERVED":
+                        varReserved.add(varInfo);
+                        break;
+                    case "GLOBAL":
+                        varGlobal.add(varInfo);
+                        break;
+                    case "LOCAL":
+                        varLocal.add(varInfo);
+                        break;
+                    case "LOOP":
+                        varLoop.add(varInfo);
+                        break;
+                    default:
+                        section = null;
+                        GuiPanel.setStatusText(true, "Invalid message received");
+                }
+            } else {
+                // variable value changed
+                boolean bFound = false;
+                switch (section) {
+                    case "RESERVED":
+                        for (int varIx = 0; varIx < varReserved.size(); varIx++) {
+                            VarAccess varInfo = varReserved.get(varIx);
+                            if (varInfo.getName().contentEquals(name)) {
+                                varInfo.setValueString(value, writer, line, time);
+                                varReserved.set(varIx, varInfo);
+                                bFound = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "GLOBAL":
+                        for (int varIx = 0; varIx < varGlobal.size(); varIx++) {
+                            VarAccess varInfo = varGlobal.get(varIx);
+                            if (varInfo.getName().contentEquals(name)) {
+                                varInfo.setValueString(value, writer, line, time);
+                                varGlobal.set(varIx, varInfo);
+                                bFound = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "LOCAL":
+                        for (int varIx = 0; varIx < varLocal.size(); varIx++) {
+                            VarAccess varInfo = varLocal.get(varIx);
+                            if (varInfo.getName().contentEquals(name)) {
+                                varInfo.setValueString(value, writer, line, time);
+                                varLocal.set(varIx, varInfo);
+                                bFound = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "LOOP":
+                        for (int varIx = 0; varIx < varLoop.size(); varIx++) {
+                            VarAccess varInfo = varLoop.get(varIx);
+                            if (varInfo.getName().contentEquals(name)) {
+                                varInfo.setValueString(value, writer, line, time);
+                                varLoop.set(varIx, varInfo);
+                                bFound = true;
+                                break;
+                            }
+                        }
+                        break;
+                    default:
+                        section = null;
+                        GuiPanel.setStatusText(true, "Invalid message received");
+                }
+                if (! bFound) {
+                    GuiPanel.setStatusText(true, section + " variable not found: " + name);
+                }
             }
         }
     }
