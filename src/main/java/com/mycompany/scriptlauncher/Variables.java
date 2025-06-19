@@ -49,6 +49,12 @@ public class Variables {
         setColors();
     }
 
+    public static void clear () {
+        if (textPane != null) {
+            textPane.setText("");
+        }
+    }
+
     public static void addSubroutine (String name, Integer lineNum) {
         subroutines.put(name, lineNum);
     }
@@ -156,16 +162,23 @@ public class Variables {
         int tab4 = tab3 + 15;   // WRITER LINE offset: handles subroutines up to 14 in length
         int tab5 = tab4 + 6;    // WRITER TIME offset: max line number of 4
         int tab6 = tab5 + 12;   // VALUE offset: time is always 9 chars long:  00:00.000
+        int tab7 = tab6 + 6;    // 
+        int tab8 = tab7 + 6;    // 
         
         // now display each section
         String title = "Variable name";
         title = addTabPadding (tab1, title) + "Owner";
         title = addTabPadding (tab2, title) + "Data type";
         title = addTabPadding (tab3, title) + "Value";
+        title = addTabPadding (tab4, title) + "Start";
+        title = addTabPadding (tab5, title) + "Stop";
+        title = addTabPadding (tab6, title) + "Step";
+        title = addTabPadding (tab7, title) + "Incl";
+        title = addTabPadding (tab8, title) + "Comp";
         if (! varLoop.isEmpty()) {
-            printType(MessageType.Title, true, "=== LOOPS =====================================================================================");
+            printType(MessageType.Title, true, "=== LOOPS ===============================================================================================");
             printType(MessageType.Title, true, title);
-            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
             for (int ix = 0; ix < varLoop.size(); ix++) {
                 VarAccess varInfo = varLoop.get(ix);
                 String value = varInfo.getValueString();
@@ -176,6 +189,11 @@ public class Variables {
                 line = addTabPadding (tab1, line) + varInfo.getOwner();
                 line = addTabPadding (tab2, line) + "Integer";
                 line = addTabPadding (tab3, line) + value;
+                line = addTabPadding (tab4, line) + varInfo.getStartValue();
+                line = addTabPadding (tab5, line) + varInfo.getEndValue();
+                line = addTabPadding (tab6, line) + varInfo.getStepValue();
+                line = addTabPadding (tab7, line) + varInfo.getIncl();
+                line = addTabPadding (tab8, line) + varInfo.getCompSign();
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {
@@ -185,9 +203,13 @@ public class Variables {
             printlf();
         }
         if (! varReserved.isEmpty()) {
-            printType(MessageType.Title, true, "=== RESERVED ==================================================================================");
+            title = "Variable name";
+            title = addTabPadding (tab1, title) + "Owner";
+            title = addTabPadding (tab2, title) + "Data type";
+            title = addTabPadding (tab3, title) + "Value";
+            printType(MessageType.Title, true, "=== RESERVED ============================================================================================");
             printType(MessageType.Title, true, title);
-            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
             for (int ix = 0; ix < varReserved.size(); ix++) {
                 VarAccess varInfo = varReserved.get(ix);
                 String value = varInfo.getValueString();
@@ -215,9 +237,9 @@ public class Variables {
         title = addTabPadding (tab5, title) + "Time";
         title = addTabPadding (tab6, title) + "Value";
         if (! varGlobal.isEmpty()) {
-            printType(MessageType.Title, true, "=== GLOBALS ===================================================================================");
+            printType(MessageType.Title, true, "=== GLOBALS =============================================================================================");
             printType(MessageType.Title, true, title);
-            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
             for (int ix = 0; ix < varGlobal.size(); ix++) {
                 VarAccess varInfo = varGlobal.get(ix);
                 String value = varInfo.getValueString();
@@ -240,9 +262,9 @@ public class Variables {
             printlf();
         }
         if (! varLocal.isEmpty()) {
-            printType(MessageType.Title, true, "=== LOCALS ====================================================================================");
+            printType(MessageType.Title, true, "=== LOCALS ==============================================================================================");
             printType(MessageType.Title, true, title);
-            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
             for (int ix = 0; ix < varLocal.size(); ix++) {
                 VarAccess varInfo = varLocal.get(ix);
                 String value = varInfo.getValueString();
@@ -321,6 +343,11 @@ public class Variables {
             String writer = null;
             String line = null;
             String time = null;
+            String start = null;
+            String end = null;
+            String step = null;
+            String incl = null;
+            String comp = null;
             for (int ix = 0; ix < contents.size(); ix++) {
                 String entry = contents.get(ix).strip();
                 int offset = entry.indexOf(' ');
@@ -354,6 +381,21 @@ public class Variables {
                         break;
                     case "<time>":
                         time = item;
+                        break;
+                    case "<start>":
+                        start = item;
+                        break;
+                    case "<end>":
+                        end = item;
+                        break;
+                    case "<step>":
+                        step = item;
+                        break;
+                    case "<incl>":
+                        incl = item;
+                        break;
+                    case "<comp>":
+                        comp = item;
                         break;
                     default:
                         GuiPanel.setStatusError("ERROR: VARMSG command - Invalid key: " + key);
@@ -428,16 +470,28 @@ public class Variables {
                                 break;
                             }
                         }
+                        if (! bFound) {
+                            VarAccess varInfo = new VarAccess(name, type, owner);
+                            varInfo.setValueString(value, writer, line, time);
+                            varLocal.add(varInfo);
+                            bFound = true;
+                        }
                         break;
                     case "LOOP":
                         for (int varIx = 0; varIx < varLoop.size(); varIx++) {
                             VarAccess varInfo = varLoop.get(varIx);
                             if (varInfo.getName().contentEquals(name)) {
-                                varInfo.setValueString(value, writer, line, time);
+                                varInfo.setValueLoop (value, start, end, step, incl, comp);
                                 varLoop.set(varIx, varInfo);
                                 bFound = true;
                                 break;
                             }
+                        }
+                        if (! bFound) {
+                            VarAccess varInfo = new VarAccess(name, type, owner);
+                            varInfo.setValueLoop (value, start, end, step, incl, comp);
+                            varLoop.add(varInfo);
+                            bFound = true;
                         }
                         break;
                     default:
@@ -445,7 +499,7 @@ public class Variables {
                         GuiPanel.setStatusError("ERROR: VARMSG command - Invalid section: " + sect);
                 }
                 if (! bFound) {
-                    GuiPanel.setStatusError(section + " variable not found: " + name);
+                    GuiPanel.setStatusError(sect + " variable not found: " + name);
                 }
             }
         }

@@ -22,6 +22,11 @@ public class VarAccess {
     private String      writeLine;          // script line number value of last writer to variable
     private String      writeTime;          // timestamp of last write
     private String      strValue;           // value for non-arrays
+    private String      start;              // LOOP entry start value
+    private String      end;                // LOOP entry end value
+    private String      step;               // LOOP entry step value
+    private String      incl;               // LOOP entry include end value in loop flag
+    private String      comp;               // LOOP entry comparison sign
     private ArrayList<String> strArray;     // array value
         
     public enum VarType {
@@ -50,6 +55,13 @@ public class VarAccess {
         this.strValue  = null;
         this.strArray  = null;
 
+        // these hold loop-specific entries
+        this.start     = null;
+        this.end       = null;
+        this.step      = null;
+        this.incl      = null;
+        this.comp      = null;
+        
         // init the value of the chosen type
         switch (this.varType) {
             case Integer:
@@ -132,6 +144,26 @@ public class VarAccess {
         return this.owner;
     }
         
+    public String getStartValue () {
+        return this.start;
+    }
+        
+    public String getEndValue () {
+        return this.end;
+    }
+        
+    public String getStepValue () {
+        return this.step;
+    }
+        
+    public String getIncl () {
+        return this.incl;
+    }
+        
+    public String getCompSign () {
+        return this.comp;
+    }
+        
     // these are the functions to set the value of the variable
     public void setValueString (String value, String subName, String line, String time) {
         switch (this.varType) {
@@ -175,6 +207,27 @@ public class VarAccess {
         this.writer    = subName;
         this.writeLine = line;
         this.writeTime = time;
+        this.bInit     = true;
+    }
+
+    // these are the functions to set the value of the loop variables
+    public void setValueLoop (String value, String start, String end, String step, String incl, String comp) {
+        try {
+            Integer.valueOf(value);
+            Integer.valueOf(start);
+            Integer.valueOf(end);
+            Integer.valueOf(step);
+        } catch (NumberFormatException exMsg) {
+            GuiPanel.setStatusError("VarAccess: Variable '" + this.varName + "' contains non-Integer value");
+            return;
+        }
+        this.bChanged  = true;
+        this.strValue  = value;
+        this.start     = start;
+        this.end       = end;
+        this.step      = step;
+        this.incl      = incl;
+        this.comp      = comp;
         this.bInit     = true;
     }
 

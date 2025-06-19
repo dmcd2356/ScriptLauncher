@@ -460,6 +460,9 @@ public class GuiPanel {
             
             // update the directory selection in the Properties file
             props.setPropertiesItem("ScriptFile", file.getAbsolutePath());
+            
+            Logger.clear();
+            Variables.clear();
         }
     }
   
@@ -519,7 +522,7 @@ public class GuiPanel {
         
         switch (command) {
             case "STATUS:":
-                setState(words.get(1));
+                setState(msgDisplay.substring(8));
                 break;
             case "LINE:":
                 if (words.size() < 2) {
