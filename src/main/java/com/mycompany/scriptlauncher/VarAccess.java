@@ -13,6 +13,8 @@ import java.util.Arrays;
  */
 public class VarAccess {
     
+    private boolean     bInit;              // false if variable never written to
+    private boolean     bChanged;           // true  if newly modified variable
     private String      varName;            // name of variable
     private VarType     varType;            // the variable data type
     private String      owner;              // owner (name of function that allocated)
@@ -33,6 +35,8 @@ public class VarAccess {
 
     // this is called during allocation to define the variable type and access info
     VarAccess (String varName, String varType, String owner) {
+        this.bInit     = false;
+        this.bChanged  = false;
         this.varName   = varName;
         this.varType   = findVarType(varType);
         this.owner     = owner;  // (only for LOCAL & GLOBAL)
@@ -40,7 +44,7 @@ public class VarAccess {
         // these hold who last wrote to the variable and when (only for LOCAL & GLOBAL)
         this.writer    = null;
         this.writeLine = null;
-        this.writeTime = "---";
+        this.writeTime = null;
 
         // these will hold the data value
         this.strValue  = null;
@@ -66,26 +70,26 @@ public class VarAccess {
     }
 
     public static VarType findVarType (String type) {
-        for (VarType entry : VarType.values()) {
-            if (entry.toString().contentEquals(type)) {
-                return entry;
+        if (type != null) {
+            for (VarType entry : VarType.values()) {
+                if (entry.toString().contentEquals(type)) {
+                    return entry;
+                }
             }
         }
-        // TODO: report invalid type
+        // report invalid type
+        GuiPanel.setStatusError("VarAccess: Invalid variable type: " + type);
         return VarType.String;
     }
     
-    // these functions get the access info of the variable
     public VarType getType () {
         return this.varType;
     }
 
-    // these functions get the access info of the variable
     public String getName () {
         return this.varName;
     }
         
-    // these are the function to get the variable values
     public String getValueString () {
         return this.strValue;
     }
@@ -95,23 +99,33 @@ public class VarAccess {
     }
 
     // indicates if the variable has not been written to since it was allocated
-    public boolean isVarUninit () {
-        return this.writer == null;
+    public boolean isVarInit () {
+        return this.bInit;
     }
 
+    // indicates if the variable has not been written to since it was allocated
+    public boolean isVarChanged () {
+        return this.bChanged;
+    }
+
+    // reset the changed flag for next pass
+    public void resetVarChanged() {
+        this.bChanged = false;
+    }
+    
     // returns the last writer (MAIN or subroutine) to the variable
     public String getWriter () {
-        return (this.writer == null) ? "null" : this.writer;
+        return (this.writer == null) ? "----" : this.writer;
     }
         
     // returns the line number of the script that was the last writer to the variable
     public String getWriterIndex () {
-        return (this.writeLine == null) ? "null" : this.writeLine;
+        return (this.writeLine == null) ? "----" : this.writeLine;
     }
 
     // returns the timestamp when the last writer wrote to the variable
     public String getWriterTime () {
-        return this.writeTime;
+        return (this.writeTime == null) ? "----" : this.writeTime;
     }
         
     public String getOwner () {
@@ -125,31 +139,49 @@ public class VarAccess {
                 break;
             case Integer:
             case Unsigned:
-                // TODO: if not integer value, indicate error
+                // if value not integer value, indicate error and exit
+                try {
+                    Integer.valueOf(value);
+                } catch (NumberFormatException exMsg) {
+                    GuiPanel.setStatusError("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
+                    return;
+                }
                 break;
             case Boolean:
-                // TODO: if not boolean value, indicate error
+                // if value not boolean value, indicate error and exit
+                if (! value.equalsIgnoreCase("TRUE") && ! value.equalsIgnoreCase("FALSE")) {
+                    GuiPanel.setStatusError("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
+                    return;
+                }
                 break;
             case StrArray:
             case IntArray:
                 strArray.clear();
                 if (value != null && ! value.isEmpty()) {
-                    ArrayList<String> array = new ArrayList<String>(Arrays.asList(value.split(",")));
-                    for (int ix = 0; ix < strArray.size(); ix++) {
+                    // if array enclosed in brackets (which it should be) remove them
+                    if (value.charAt(0) == '[' && value.charAt(value.length()-1) == ']') {
+                        value = value.substring(1, value.length()-1);
+                    }
+                    ArrayList<String> array = new ArrayList<>(Arrays.asList(value.split(",")));
+                    for (int ix = 0; ix < array.size(); ix++) {
                         strArray.add(array.get(ix).strip());
                     }
                 }
                 value = strArray.toString();
                 break;
         }
+        this.bChanged  = true;
         this.strValue  = value;
         this.writer    = subName;
         this.writeLine = line;
         this.writeTime = time;
+        this.bInit     = true;
     }
 
     /**
      * modifies the StrArray or IntArray value.
+     * 
+     * (This would only be called if the user makes a change to an entry in the array)
      * 
      * To replace an entry at index X, use: setValueArrayEntry (X, value)
      * To append  an entry at the end, use: setValueArrayEntry (X, value) where X >= array length
@@ -159,6 +191,10 @@ public class VarAccess {
      * @param value - the value to replace, append, or remove (null to remove entry)
      */
     public void setValueArrayEntry (int index, String value) {
+        if (index < 0) {
+            GuiPanel.setStatusError("VarAccess: negative index value set for parameter: " + this.varName);
+            return;
+        }
         switch (this.varType) {
             case StrArray:
             case IntArray:
@@ -176,7 +212,7 @@ public class VarAccess {
                 this.strValue = strArray.toString();
                 break;
             default:
-                // TODO: always indicate error
+                GuiPanel.setStatusError("VarAccess: setValueArrayEntry() called on non-array parameter: " + this.varType);
                 break;
         }
     }
@@ -188,8 +224,12 @@ public class VarAccess {
      * @param value - the value to insert
      */
     public void insertValueArrayEntry (int index, String value) {
-        if (value == null || index < 0) {
-            // TODO: indicate error
+        if (value == null) {
+            GuiPanel.setStatusError("VarAccess: null val set for parameter: " + this.varName);
+            return;
+        }
+        if (index < 0) {
+            GuiPanel.setStatusError("VarAccess: negative index value set for parameter: " + this.varName);
             return;
         }
         switch (this.varType) {
@@ -203,7 +243,7 @@ public class VarAccess {
                 this.strValue = strArray.toString();
                 break;
             default:
-                // TODO: indicate error
+                GuiPanel.setStatusError("VarAccess: insertValueArrayEntry() called on non-array parameter: " + this.varType);
                 break;
         }
     }

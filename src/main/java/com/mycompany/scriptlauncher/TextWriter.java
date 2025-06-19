@@ -40,6 +40,17 @@ public class TextWriter {
     private static final String NEWLINE = System.getProperty("line.separator");
 
     /**
+     * displays a linefeed char in the debug window.
+     * 
+     * @param textPane - the panel to write to
+     */
+    public static void printlf (JTextPane textPane) {
+        appendToPane(textPane, TextWriter.NEWLINE,
+                FontInfo.TextColor.Black,
+                "Courier", 11, FontInfo.FontType.Normal);
+    }
+
+    /**
      * displays a message in the debug window.
      * 
      * @param textPane - the panel to write to

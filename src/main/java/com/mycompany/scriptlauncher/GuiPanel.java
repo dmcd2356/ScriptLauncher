@@ -41,8 +41,6 @@ public class GuiPanel {
     private static JTextPane      scriptPane;
     private static JTextPane      varPane;
     private static JFileChooser   fileSelector;
-    private static Timer          pktTimer;
-    private static Timer          scriptTimer;
     private static TCPClient      tcpClient;
     private static boolean        connected;
     private static ProcState      procState;
@@ -113,7 +111,12 @@ public class GuiPanel {
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
 
         panel = "PNL_STATUS";
-        guiControls.makeTextField(panel, "TXT_STATUS", "", LEFT, true, 1100, "", false);
+//        guiControls.makeTextField(panel, "TXT_STATUS", "", LEFT, true, 1100, "", false);
+        String emptySpace = "                                                                                                                        ";
+        guiControls.makeLabel (panel, "LBL_STATUS"   , "" , LEFT , false);
+        guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
+        JLabel textField = guiControls.getLabel("LBL_STATUS");
+        textField.setMinimumSize(new Dimension(1200, 25));
         
         // add the Script panel to the tabs
         JScrollPane fileScrollPanel;
@@ -156,7 +159,6 @@ public class GuiPanel {
         (guiControls.getButton("BTN_COMPILE")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableUpdateTimers(false);
                 sendMessage("COMPILE");
             }
         });
@@ -165,11 +167,10 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton runButton = guiControls.getButton("BTN_RUN");
                 if (runButton.getText().equals("Run")) {
-                    enableUpdateTimers(false);
+                    Variables.resetChanged();
                     runButton.setText("Stop");
                     sendMessage("RUN");
                 } else {
-                    enableUpdateTimers(true);
                     runButton.setText("Run");
                     sendMessage("STOP");
                 }
@@ -180,11 +181,10 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton pauseButton = guiControls.getButton("BTN_PAUSE");
                 if (pauseButton.getText().equals("Pause")) {
-                    enableUpdateTimers(false);
                     pauseButton.setText("Resume");
                     sendMessage("PAUSE");
                 } else {
-                    enableUpdateTimers(true);
+                    Variables.resetChanged();
                     pauseButton.setText("Pause");
                     sendMessage("RESUME");
                 }
@@ -200,14 +200,14 @@ public class GuiPanel {
                     try {
                         portConnection = Integer.parseInt(strPort);
                     } catch (NumberFormatException exMsg) {
-                        setStatusText (true, "Invalid port selection: " + strPort);
+                        setStatusError ("Invalid port selection: " + strPort);
                         return;
                     }
                     if (portConnection < 100 || portConnection > 65535) {
-                        setStatusText (true, "Invalid port selection: " + strPort);
+                        setStatusError ("Invalid port selection: " + strPort);
                         return;
                     }
-                    setStatusText (true, "Waiting for connection on port " + portConnection + "...");
+                    setStatusError ("Waiting for connection on port " + portConnection + "...");
                     guiControls.update();
 
                     // start the TCP listener thread
@@ -226,14 +226,13 @@ public class GuiPanel {
         (guiControls.getButton("BTN_STEP")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableUpdateTimers(false);
+                Variables.resetChanged();
                 sendMessage("STEP");
             }
         });
         (guiControls.getButton("BTN_EXIT")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableUpdateTimers(false);
                 sendMessage("EXIT");
             }
         });
@@ -286,19 +285,11 @@ public class GuiPanel {
         label.setText(text);
     }
     
-    public static void setStatusText (boolean error, String text) {
-        JTextField textField = guiControls.getTextField("TXT_STATUS");
+    public static void setStatusError (String text) {
+        JLabel textField = guiControls.getLabel("LBL_STATUS");
         if (textField != null) {
-            if (text == null || text.isEmpty()) {
-                textField.setForeground(Color.black);
-                textField.setText("");
-            } else if (error) {
-                textField.setForeground(Color.red);
-                textField.setText(text);
-            } else {
-                textField.setForeground(Color.black);
-                textField.setText(text);
-            }
+            textField.setForeground(Color.red);
+            textField.setText(text);
         }
     }
     
@@ -317,8 +308,19 @@ public class GuiPanel {
         if (state == null || state.isBlank()) {
             return;
         }
+
+        // check for special error cases
+        if (state.startsWith("UNKNOWN: ")) {
+            setStatusError("Invalid command sent to SERVER: " + state.substring(9));
+            return;
+        }
+        if (state.startsWith("ERROR")) {
+            setStatusError(state);
+            state = "EOF";
+        }
         
         JButton button;
+        JLabel label;
         switch (state) {
             case "STARTUP":
                 procState = ProcState.STARTUP;
@@ -344,7 +346,9 @@ public class GuiPanel {
                 enableButton(true , "BTN_EXIT");
                 button = guiControls.getButton("BTN_CONNECT");
                 button.setText("Connect");
-                setStatusText (false, null);
+                label = guiControls.getLabel("LBL_LOAD");
+                label.setText("");
+                setStatusError ("");
                 break;
             case "DISCONNECTED":
                 connected = false;
@@ -359,6 +363,8 @@ public class GuiPanel {
                 enableButton(false, "BTN_EXIT");
                 button = guiControls.getButton("BTN_CONNECT");
                 button.setText("Connect");
+                label = guiControls.getLabel("LBL_LOAD");
+                label.setText("");
                 break;
             case "LOADED":
                 procState = ProcState.LOADED;
@@ -375,10 +381,11 @@ public class GuiPanel {
                 button.setText("Run");
                 break;
             case "EOF":
+            case "STOPPED":
             case "STEPPED":
-            case "RESUMED":
                 procState = ProcState.COMPILED;
                 updateStateLabel (state);
+                Variables.print();
                 enableButton(true , "BTN_RUN");
                 enableButton(true , "BTN_STEP");
                 enableButton(false, "BTN_PAUSE");
@@ -387,19 +394,32 @@ public class GuiPanel {
                 button = guiControls.getButton("BTN_RUN");
                 button.setText("Run");
                 // TODO: set highlighted line to line 1
-                enableUpdateTimers(false);
                 break;
             case "PAUSED":
-            case "STOPPED":
                 procState = ProcState.PAUSED;
                 updateStateLabel (state);
+                Variables.print();
+                enableButton(true , "BTN_RUN");
+                enableButton(true , "BTN_STEP");
+                enableButton(true , "BTN_PAUSE");
                 button = guiControls.getButton("BTN_PAUSE");
                 button.setText("Resume");
                 button = guiControls.getButton("BTN_RUN");
                 button.setText("Run");
                 break;
+            case "RESUMED":
+                procState = ProcState.COMPILED;
+                updateStateLabel (state);
+                enableButton(true , "BTN_RUN");
+                enableButton(true , "BTN_STEP");
+                enableButton(true , "BTN_PAUSE");
+                button = guiControls.getButton("BTN_PAUSE");
+                button.setText("Pause");
+                button = guiControls.getButton("BTN_RUN");
+                button.setText("Stop");
+                break;
             default:
-                setStatusText(true, "Invalid STATUS command: " + state);
+                setStatusError("Invalid STATUS command: " + state);
                 break;
         }
     }
@@ -412,26 +432,9 @@ public class GuiPanel {
         setState ("DISCONNECTED");
     }
 
-    private static void enableUpdateTimers(boolean enable) {
-        if (pktTimer != null) {
-            if (enable) {
-                pktTimer.start();
-            } else {
-                pktTimer.stop();
-            }
-        }
-        if (scriptTimer != null) {
-            if (enable) {
-                scriptTimer.start();
-            } else {
-                scriptTimer.stop();
-            }
-        }
-    }
-  
     private static void sendMessage (String message) {
         if (tcpClient == null || !connected) {
-            setStatusText(true, "Send to SERVER when Server not connected: " + message);
+            setStatusError("Send to SERVER when Server not connected: " + message);
         } else {
             System.out.println("Send to SERVER: " + message);
             tcpClient.sendMessage(message);
@@ -447,9 +450,6 @@ public class GuiPanel {
         fileSelector.setApproveButtonText("Load");
         int retVal = fileSelector.showOpenDialog(guiControls.getFrame());
         if (retVal == JFileChooser.APPROVE_OPTION) {
-            // stop the timers from updating the display
-            enableUpdateTimers(false);
-
             // set the file to read from
             File file = fileSelector.getSelectedFile();
             Script.print(file);
@@ -460,9 +460,6 @@ public class GuiPanel {
             
             // update the directory selection in the Properties file
             props.setPropertiesItem("ScriptFile", file.getAbsolutePath());
-            
-            // now restart the update timers
-            enableUpdateTimers(true);
         }
     }
   
@@ -491,12 +488,6 @@ public class GuiPanel {
     }
   
     private static void formWindowClosing(java.awt.event.WindowEvent evt) {
-        if (scriptTimer != null) {
-            scriptTimer.stop();
-        }
-        if (pktTimer != null) {
-            pktTimer.stop();
-        }
 //        tcpThread.exit();
         guiControls.close();
         System.exit(0);
@@ -524,7 +515,7 @@ public class GuiPanel {
             msgDisplay = msgDisplay.substring(0, 120) + "...";
         }
         System.out.println("SERVER: " + message);
-        setStatusText(false, "SERVER: " + msgDisplay);
+        // TODO: all System.out msgs should got to a new panel that shows activity
         
         switch (command) {
             case "STATUS:":
@@ -532,14 +523,14 @@ public class GuiPanel {
                 break;
             case "LINE:":
                 if (words.size() < 2) {
-                    setStatusText(true, "Missing value for LINE message");
+                    setStatusError("Missing value for LINE message");
                     break;
                 }
                 String strValue = words.get(1);
                 try {
-                    Integer intValue = Integer.valueOf(strValue);
+                    Integer.valueOf(strValue);
                 } catch (NumberFormatException ex) {
-                    setStatusText(true, "Invalid Integer value: " + strValue);
+                    setStatusError("ERROR: Invalid Integer value for line: '" + strValue + "'");
                     break;
                 }
                 // TODO: highlight the line number
@@ -547,7 +538,7 @@ public class GuiPanel {
             case "LOGMSG:":
                 // add the log info to the log screen
                 if (msglen < 10) {
-                    setStatusText(true, "Invalid format for LOGMSG command");
+                    setStatusError("Invalid format for LOGMSG command");
                     break;
                 }
                 message = message.substring(8);
@@ -560,12 +551,11 @@ public class GuiPanel {
                 break;
             case "VARMSG:":
                 // extract the variable info and modify displated entries in red
-                // TODO:
                 message = message.substring(8);
-                //Variables.print(message);
+                Variables.allocationMessage(message);
                 break;
             default:
-                setStatusText(true, "Invalid command: " + command);
+                System.out.println("GuiPanel.processMessage: Invalid command: " + message);
                 break;
         }
     }

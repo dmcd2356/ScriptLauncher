@@ -20,6 +20,9 @@ public class Variables {
     *  definitions and the contents) and displaying the these entries on the Variables Pane.
     */
     
+    // the chars used to seperate entries in reporting variable contents to the client
+    private static final String DATA_SEP = "::";
+    
     private static JTextPane textPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
     private static String section = null;
@@ -31,14 +34,9 @@ public class Variables {
     private static HashMap<String, Integer> subroutines = new HashMap<>();
     
     private enum MessageType {
-        Prefix,         // the line counter value
-        Comment,        // a comment line
-        Command,        // a command (part of a line)
-        CmdOption,      // a command option (part of a line)
-        Reference,      // a variable reference value (part of a line)
-        Numeric,        // a numeric value (part of a line)
-        Quoted,         // a quoted String value (part of a line)
-        Normal,         // anything else
+        Title,          // header entry
+        Normal,         // unchanged variable entry
+        Changed,        // variable that has changed
     }
 
     /**
@@ -58,7 +56,7 @@ public class Variables {
     /**
      * clears the display.
      */
-    private static void reset() {
+    private static void resetVariables() {
         // reset the variable info gathered from the server
         varReserved = new ArrayList<>();
         varGlobal   = new ArrayList<>();
@@ -116,11 +114,34 @@ public class Variables {
         line = line.substring(0, tab);
         return line;
     }
+
+    /**
+     * this resets the changed status for each variable and updates the display.
+     * (this should be called at the start of a RUN or STEP command)
+     */
+    public static void resetChanged () {
+        // reset all variable change flags to "not changed"
+        for (int ix = 0; ix < varReserved.size(); ix++) {
+            varReserved.get(ix).resetVarChanged();
+        }
+        for (int ix = 0; ix < varGlobal.size(); ix++) {
+            varGlobal.get(ix).resetVarChanged();
+        }
+        for (int ix = 0; ix < varLocal.size(); ix++) {
+            varLocal.get(ix).resetVarChanged();
+        }
+        for (int ix = 0; ix < varLoop.size(); ix++) {
+            varLoop.get(ix).resetVarChanged();
+        }
+        
+        // re-draw the variables
+        print();
+    }
     
     /**
      * displays the variables received.
      */
-    public static final void print() {
+    public static void print() {
         if (textPane == null) {
             return;
         }
@@ -128,51 +149,120 @@ public class Variables {
         // first, clear the display the display
         textPane.setText("");
 
-        // set the tab stops
-        int tab1 = 25;  // handles variable names up to 24 in length
-        int tab2 = 40;  // handles subroutines up to 14 in length
+        // set the tab stops (NAME is at offset 0)
+        int tab1 = 25;          // OWNER offset: handles variable names up to 24 in length
+        int tab2 = tab1 + 15;   // TYPE  offset: handles subroutines up to 14 in length
+        int tab3 = tab2 + 12;   // VALUE or WRITER offset: max length of type is 8
+        int tab4 = tab3 + 15;   // WRITER LINE offset: handles subroutines up to 14 in length
+        int tab5 = tab4 + 6;    // WRITER TIME offset: max line number of 4
+        int tab6 = tab5 + 12;   // VALUE offset: time is always 9 chars long:  00:00.000
         
         // now display each section
-        String title = addTabPadding (tab2, addTabPadding (tab1, "Variable name") + "Owner") + "Data type";
-        if (! varReserved.isEmpty()) {
-            printType(MessageType.Prefix, true, "=== RESERVED ============================================================");
-            printType(MessageType.Prefix, true, title);
-            printType(MessageType.Prefix, true, "_________________________________________________________________________");
-            for (int ix = 0; ix < varReserved.size(); ix++) {
-                VarAccess varInfo = varReserved.get(ix);
-                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + "----") + varInfo.getType();
-                printType(MessageType.Prefix, true, line);
-            }
-        }
-        if (! varGlobal.isEmpty()) {
-            printType(MessageType.Prefix, true, "=== GLOBALS =============================================================");
-            printType(MessageType.Prefix, true, title);
-            printType(MessageType.Prefix, true, "_________________________________________________________________________");
-            for (int ix = 0; ix < varGlobal.size(); ix++) {
-                VarAccess varInfo = varGlobal.get(ix);
-                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + varInfo.getType();
-                printType(MessageType.Prefix, true, line);
-            }
-        }
-        if (! varLocal.isEmpty()) {
-            printType(MessageType.Prefix, true, "=== LOCALS ==============================================================");
-            printType(MessageType.Prefix, true, title);
-            printType(MessageType.Prefix, true, "_________________________________________________________________________");
-            for (int ix = 0; ix < varLocal.size(); ix++) {
-                VarAccess varInfo = varLocal.get(ix);
-                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + varInfo.getType();
-                printType(MessageType.Prefix, true, line);
-            }
-        }
+        String title = "Variable name";
+        title = addTabPadding (tab1, title) + "Owner";
+        title = addTabPadding (tab2, title) + "Data type";
+        title = addTabPadding (tab3, title) + "Value";
         if (! varLoop.isEmpty()) {
-            printType(MessageType.Prefix, true, "=== LOOPS ===============================================================");
-            printType(MessageType.Prefix, true, title);
-            printType(MessageType.Prefix, true, "_________________________________________________________________________");
+            printType(MessageType.Title, true, "=== LOOPS =====================================================================================");
+            printType(MessageType.Title, true, title);
+            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
             for (int ix = 0; ix < varLoop.size(); ix++) {
                 VarAccess varInfo = varLoop.get(ix);
-                String line = addTabPadding (tab2, addTabPadding (tab1, varInfo.getName()) + varInfo.getOwner()) + "Integer";
-                printType(MessageType.Prefix, true, line);
+                String value = varInfo.getValueString();
+                if (value == null || value.isEmpty()) {
+                    value = "----";
+                }
+                String line = varInfo.getName();
+                line = addTabPadding (tab1, line) + varInfo.getOwner();
+                line = addTabPadding (tab2, line) + "Integer";
+                line = addTabPadding (tab3, line) + value;
+                if (varInfo.isVarChanged()) {
+                    printType(MessageType.Changed, true, line);
+                } else {
+                    printType(MessageType.Normal, true, line);
+                }
             }
+            printlf();
+        }
+        if (! varReserved.isEmpty()) {
+            printType(MessageType.Title, true, "=== RESERVED ==================================================================================");
+            printType(MessageType.Title, true, title);
+            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            for (int ix = 0; ix < varReserved.size(); ix++) {
+                VarAccess varInfo = varReserved.get(ix);
+                String value = varInfo.getValueString();
+                if (value == null || value.isEmpty()) {
+                    value = "----";
+                }
+                String line = varInfo.getName();
+                line = addTabPadding (tab1, line) + "----";
+                line = addTabPadding (tab2, line) + varInfo.getType().toString();
+                line = addTabPadding (tab3, line) + value;
+                if (varInfo.isVarChanged()) {
+                    printType(MessageType.Changed, true, line);
+                } else {
+                    printType(MessageType.Normal, true, line);
+                }
+            }
+            printlf();
+        }
+
+        title = "Variable name";
+        title = addTabPadding (tab1, title) + "Owner";
+        title = addTabPadding (tab2, title) + "Data type";
+        title = addTabPadding (tab3, title) + "Writer";
+        title = addTabPadding (tab4, title) + "Line";
+        title = addTabPadding (tab5, title) + "Time";
+        title = addTabPadding (tab6, title) + "Value";
+        if (! varGlobal.isEmpty()) {
+            printType(MessageType.Title, true, "=== GLOBALS ===================================================================================");
+            printType(MessageType.Title, true, title);
+            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            for (int ix = 0; ix < varGlobal.size(); ix++) {
+                VarAccess varInfo = varGlobal.get(ix);
+                String value = varInfo.getValueString();
+                if (value == null || value.isEmpty()) {
+                    value = "----";
+                }
+                String line = varInfo.getName();
+                line = addTabPadding (tab1, line) + varInfo.getOwner();
+                line = addTabPadding (tab2, line) + varInfo.getType().toString();
+                line = addTabPadding (tab3, line) + varInfo.getWriter();
+                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
+                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
+                line = addTabPadding (tab6, line) + value;
+                if (varInfo.isVarChanged()) {
+                    printType(MessageType.Changed, true, line);
+                } else {
+                    printType(MessageType.Normal, true, line);
+                }
+            }
+            printlf();
+        }
+        if (! varLocal.isEmpty()) {
+            printType(MessageType.Title, true, "=== LOCALS ====================================================================================");
+            printType(MessageType.Title, true, title);
+            printType(MessageType.Title, true, "_______________________________________________________________________________________________");
+            for (int ix = 0; ix < varLocal.size(); ix++) {
+                VarAccess varInfo = varLocal.get(ix);
+                String value = varInfo.getValueString();
+                if (value == null || value.isEmpty()) {
+                    value = "----";
+                }
+                String line = varInfo.getName();
+                line = addTabPadding (tab1, line) + varInfo.getOwner();
+                line = addTabPadding (tab2, line) + varInfo.getType().toString();
+                line = addTabPadding (tab3, line) + varInfo.getWriter();
+                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
+                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
+                line = addTabPadding (tab6, line) + value;
+                if (varInfo.isVarChanged()) {
+                    printType(MessageType.Changed, true, line);
+                } else {
+                    printType(MessageType.Normal, true, line);
+                }
+            }
+            printlf();
         }
     }
     
@@ -194,7 +284,7 @@ public class Variables {
                         section = entry;
                         break;
                     case "START":
-                        reset();
+                        resetVariables();
                         break;
                     case "END":
                         // allocation info complete - now format and print it
@@ -203,21 +293,17 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusText(true, "Invalid message received");
+                        GuiPanel.setStatusError("ERROR: ALLOC command - Invalid type " + entry);
                 }
                 return;
             } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
-                if (section == null) {
-                    GuiPanel.setStatusText(true, "Missing section name");
-                    return;
-                }
                 message = message.substring(1, message.length()-1);
-                var array = new ArrayList<String>(Arrays.asList(message.split(",")));
+                var array = new ArrayList<String>(Arrays.asList(message.split(DATA_SEP)));
                 allocationEntryMsg (array);
                 return;
             }
         }
-        GuiPanel.setStatusText(true, "Invalid message received");
+        GuiPanel.setStatusError("ERROR: ALLOC command - Invalid format: " + message);
     }
 
     /**
@@ -227,6 +313,7 @@ public class Variables {
      */
     public static final void allocationEntryMsg (ArrayList<String> contents) {
         if (textPane != null && contents != null && ! contents.isEmpty()) {
+            String sect = null;
             String name = null;
             String type = null;
             String owner = null;
@@ -238,12 +325,15 @@ public class Variables {
                 String entry = contents.get(ix).strip();
                 int offset = entry.indexOf(' ');
                 if (offset <= 0) {
-                    GuiPanel.setStatusText(true, "Invalid message received");
+                    GuiPanel.setStatusError("ERROR: VARMSG command - invalid entry format: " + entry);
                     return;
                 }
                 String key  = entry.substring(0, offset).strip();
                 String item = entry.substring(offset).strip();
                 switch (key) {
+                    case "<section>":
+                        sect = item;
+                        break;
                     case "<name>":
                         name = item;
                         break;
@@ -266,17 +356,25 @@ public class Variables {
                         time = item;
                         break;
                     default:
-                        GuiPanel.setStatusText(true, "Invalid message received");
+                        GuiPanel.setStatusError("ERROR: VARMSG command - Invalid key: " + key);
                         return;
                 }
             }
             if (name == null) {
-                GuiPanel.setStatusText(true, "Invalid message received");
+                GuiPanel.setStatusError("ERROR: VARMSG command - missing <name> entry");
                 return;
             }
 
-            if (value == null) {
+            // changed variables issue a section name in the entry.
+            // allocation omits this and just provides a header preceding the variables
+            //  that define the applicable section, which is saved in the global 'section'.
+            // if neither are found, we have an error.
+            if (value == null || sect == null) {
                 // new allocation
+                if (section == null) {
+                    GuiPanel.setStatusError("Missing section header");
+                    return;
+                }
                 VarAccess varInfo = new VarAccess(name, type, owner);
                 switch (section) {
                     case "RESERVED":
@@ -292,13 +390,12 @@ public class Variables {
                         varLoop.add(varInfo);
                         break;
                     default:
-                        section = null;
-                        GuiPanel.setStatusText(true, "Invalid message received");
+                        GuiPanel.setStatusError("Invalid section name: " + section);
                 }
             } else {
                 // variable value changed
                 boolean bFound = false;
-                switch (section) {
+                switch (sect) {
                     case "RESERVED":
                         for (int varIx = 0; varIx < varReserved.size(); varIx++) {
                             VarAccess varInfo = varReserved.get(varIx);
@@ -345,10 +442,10 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusText(true, "Invalid message received");
+                        GuiPanel.setStatusError("ERROR: VARMSG command - Invalid section: " + sect);
                 }
                 if (! bFound) {
-                    GuiPanel.setStatusText(true, section + " variable not found: " + name);
+                    GuiPanel.setStatusError(section + " variable not found: " + name);
                 }
             }
         }
@@ -358,23 +455,22 @@ public class Variables {
         FontInfo fontInfo = fontInfoTbl.get(type);
         if (fontInfo == null) {
             fontInfo = new FontInfo(FontInfo.TextColor.Black,
-                                   FontInfo.FontType.Normal, 11, "Courier");
+                                   FontInfo.FontType.Normal, 14, "Courier");
         }
 
         TextWriter.print(textPane, term, fontInfo, message);
+    }
+
+    private static void printlf() {
+        TextWriter.printlf(textPane);
     }
     
     private static void setColors () {
         if (textPane != null) {
             // these are for public consumption
-            setTypeColor (MessageType.Prefix   , FontInfo.TextColor.Black , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Comment  , FontInfo.TextColor.Green , FontInfo.FontType.Italic);
-            setTypeColor (MessageType.Command  , FontInfo.TextColor.Red   , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.CmdOption, FontInfo.TextColor.Orange, FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Reference, FontInfo.TextColor.Violet, FontInfo.FontType.Italic);
-            setTypeColor (MessageType.Numeric  , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Quoted   , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Normal   , FontInfo.TextColor.Brown , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Title    , FontInfo.TextColor.Blue  , FontInfo.FontType.Italic);
+            setTypeColor (MessageType.Normal   , FontInfo.TextColor.Black , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Changed  , FontInfo.TextColor.Red   , FontInfo.FontType.Normal);
         }
     }
   
@@ -386,7 +482,7 @@ public class Variables {
      * @param ftype - the font attributes to associate with the type
      */
     private static void setTypeColor (MessageType type, FontInfo.TextColor color, FontInfo.FontType ftype) {
-        int size = 11;
+        int size = 14;
         String font = "Courier";
         FontInfo fontinfo = new FontInfo(color, ftype, size, font);
         if (fontInfoTbl.containsKey(type)) {
