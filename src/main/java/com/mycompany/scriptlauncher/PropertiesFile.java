@@ -67,7 +67,7 @@ public class PropertiesFile {
             }
 
             // now save properties file
-            System.out.println("Creating new empty site.properties file.");
+            Output.print("STATUS: Creating new empty site.properties file.");
             File file = new File(PROPERTIES_PATH + PROPERTIES_FILE);
             try (FileOutputStream fileOut = new FileOutputStream(file)) {
                 props.store(fileOut, "Initialization");
@@ -89,7 +89,7 @@ public class PropertiesFile {
             return dflt;
         }
 
-        //System.out.println("site.properties <" + tag + "> = " + value);
+        //Output.print("STATUS: site.properties <" + tag + "> = " + value);
         return value;
     }
 
@@ -111,7 +111,7 @@ public class PropertiesFile {
                     old_value = "";
                 }
                 if (!old_value.equals(value)) {
-                    System.out.println("site.properties <" + tag + "> set to " + value);
+                    Output.print("STATUS: site.properties <" + tag + "> set to " + value);
                 }
                 props.setProperty(tag, value);
                 FileOutputStream out = new FileOutputStream(PROPERTIES_PATH + PROPERTIES_FILE);

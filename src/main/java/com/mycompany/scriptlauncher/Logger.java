@@ -83,21 +83,6 @@ public class Logger {
             TextWriter.print(textPane, false, prefixFont, countstr + " ");
             TextWriter.print(textPane, false, prefixFont, timestamp + " ");
             TextWriter.print(textPane, true, msgFont, typestr + ": " + content);
-            // print content (seperate into multiple lines if ASCII newlines are contained in it)
-//            if (!content.contains(NEWLINE)) {
-//                TextWriter.print(textPane, false, prefixFont, countstr + " ");
-//                TextWriter.print(textPane, false, prefixFont, timestamp);
-//                TextWriter.print(textPane, true, msgFont, typestr + ": " + content);
-//            }
-//            else {
-//                // seperate into lines and print each independantly
-//                String[] msgarray = content.split(NEWLINE);
-//                for (String msg : msgarray) {
-//                    TextWriter.print(textPane, false, prefixFont, countstr + " ");
-//                    TextWriter.print(textPane, false, prefixFont, timestamp);
-//                    TextWriter.print(textPane, true, typestr, typestr + ": " + msg);
-//                }
-//            }
         }
     }
 

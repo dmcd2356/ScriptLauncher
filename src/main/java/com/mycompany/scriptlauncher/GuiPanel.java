@@ -31,19 +31,19 @@ public class GuiPanel {
     * This class handles creating and updating the Graphical User Interface.
     */
 
-    private static final String CLASS_NAME = GuiPanel.class.getSimpleName();
-    
     private final static GuiControls  guiControls = new GuiControls();
     private static PropertiesFile props;
     private static JTabbedPane    tabPanel;
     private static JTextPane      debugPane;
     private static JTextPane      scriptPane;
     private static JTextPane      varPane;
+    private static JTextPane      outputPane;
     private static JFileChooser   fileSelector;
     private static TCPClient      tcpClient;
     private static boolean        connected;
     private static ProcState      procState;
     private static int            portConnection;
+    private static ArrayList<String> panelId = new ArrayList<>();
 
     private static enum ProcState {
         STARTUP,
@@ -75,13 +75,13 @@ public class GuiPanel {
         GuiControls.Orient RIGHT = GuiControls.Orient.RIGHT;
 
         // create the frame
-        guiControls.newFrame(panelName, 1200, 600, false);
+        guiControls.newFrame(panelName, 1200, 900, false);
 
         // create the entries in the main frame
         guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT , false);
         guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT , true);
         guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT , false);
-        guiControls.makePanel (null, "PNL_CONTROL2"   , ""             , RIGHT, true);
+        guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT, true);
         guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT , true);
         guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT , true);
 
@@ -107,9 +107,8 @@ public class GuiPanel {
         guiControls.makeButton(panel, "BTN_STEP"     , "Step"     , LEFT , false);
         guiControls.makeLabel (panel, ""             , "        " , LEFT , false); // dummy
         guiControls.makeButton(panel, "BTN_BREAKPT"  , "Breakpt"  , LEFT , true);
-//        guiControls.makeButton(panel, "BTN_CLEAR"    , "Clear"  , LEFT, true);
 
-        panel = "PNL_CONTROL2";
+        panel = "PNL_TERMINATE";
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
 
         panel = "PNL_STATUS";
@@ -127,22 +126,36 @@ public class GuiPanel {
         
         // add the Script panel to the tabs
         JScrollPane fileScrollPanel;
+        String title = "Script";
         scriptPane = new JTextPane();
         fileScrollPanel = new JScrollPane(scriptPane);
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
-        tabPanel.addTab("Script", fileScrollPanel);
+        tabPanel.addTab(title, fileScrollPanel);
+        panelId.add(title);
 
         // add the Variables panel to the tabs
+        title = "Variables";
         varPane = new JTextPane();
         fileScrollPanel = new JScrollPane(varPane);
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
-        tabPanel.addTab("Variables", fileScrollPanel);
+        tabPanel.addTab(title, fileScrollPanel);
+        panelId.add(title);
 
         // add the Debug message panel to the tabs
+        title = "Debug log";
         debugPane = new JTextPane();
         fileScrollPanel = new JScrollPane(debugPane);
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
-        tabPanel.addTab("Debug Messages", fileScrollPanel);
+        tabPanel.addTab(title, fileScrollPanel);
+        panelId.add(title);
+
+        // add the Output message panel to the tabs
+        title = "Output";
+        outputPane = new JTextPane();
+        fileScrollPanel = new JScrollPane(outputPane);
+        fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
+        tabPanel.addTab(title, fileScrollPanel);
+        panelId.add(title);
 
         // we need a filechooser for the Save buttons
         fileSelector = new JFileChooser();
@@ -160,6 +173,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_LOAD")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                Output.print("STATUS: LOAD button pressed");
                 loadScriptButtonActionPerformed(evt);
                 clearStatusError();
             }
@@ -167,6 +181,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_COMPILE")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                Output.print("STATUS: COMPILE button pressed");
                 sendMessage("COMPILE");
                 clearStatusError();
             }
@@ -176,10 +191,12 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton runButton = guiControls.getButton("BTN_RUN");
                 if (runButton.getText().equals("Run")) {
+                    Output.print("STATUS: RUN button pressed");
                     Variables.resetChanged();
                     runButton.setText("Stop");
                     sendMessage("RUN");
                 } else {
+                    Output.print("STATUS: STOP button pressed");
                     runButton.setText("Run");
                     sendMessage("STOP");
                 }
@@ -191,9 +208,11 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton pauseButton = guiControls.getButton("BTN_PAUSE");
                 if (pauseButton.getText().equals("Pause")) {
+                    Output.print("STATUS: PAUSE button pressed");
                     pauseButton.setText("Resume");
                     sendMessage("PAUSE");
                 } else {
+                    Output.print("STATUS: RESUME button pressed");
                     Variables.resetChanged();
                     pauseButton.setText("Pause");
                     sendMessage("RESUME");
@@ -206,6 +225,7 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton pauseButton = guiControls.getButton("BTN_CONNECT");
                 if (pauseButton.getText().equals("Connect")) {
+                    Output.print("STATUS: CONNECT button pressed");
                     JTextField portField = guiControls.getTextField ("TXT_PORT");
                     String strPort = portField.getText();
                     try {
@@ -218,7 +238,7 @@ public class GuiPanel {
                         setStatusError ("Invalid port selection: " + strPort);
                         return;
                     }
-                    setStatusError ("Waiting for connection on port " + portConnection + "...");
+                    setStatusMessage ("Waiting for connection on port " + portConnection + "...");
                     guiControls.update();
 
                     // start the TCP listener thread
@@ -230,6 +250,7 @@ public class GuiPanel {
                     }
                     pauseButton.setText("Disconnect");
                 } else {
+                    Output.print("STATUS: DISCONNECT button pressed");
                     pauseButton.setText("Connect");
                 }
                 clearStatusError();
@@ -238,6 +259,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_STEP")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                Output.print("STATUS: STEP button pressed");
                 Variables.resetChanged();
                 sendMessage("STEP");
                 clearStatusError();
@@ -246,22 +268,18 @@ public class GuiPanel {
         (guiControls.getButton("BTN_EXIT")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                Output.print("STATUS: EXIT button pressed");
                 sendMessage("EXIT");
                 clearStatusError();
             }
         });
-//        (guiControls.getButton("BTN_CLEAR")).addActionListener(new ActionListener() {
-//            @Override
-//            public void actionPerformed(java.awt.event.ActionEvent evt) {
-//                resetCapturedInput();
-//            }
-//        });
 
         // display the frame
         guiControls.display();
 
         // now init the debug message handler and the script file handler
         Logger.init(debugPane);
+        Output.init(outputPane);
         Script.init(scriptPane);
         Variables.init(varPane);
 
@@ -286,18 +304,19 @@ public class GuiPanel {
         System.exit(0);
     }
 
-    public static boolean isDebugMsgTabSelected() {
-        return tabPanel.getSelectedIndex() == 0;
-    }
-  
-    public static boolean isScriptTabSelected() {
-        return tabPanel.getSelectedIndex() == 1;
-    }
+//    public static boolean isScriptTabSelected() {
+//        boolean status = false;
+//        int ix = tabPanel.getSelectedIndex();
+//        if (ix >= 0 && ix < panelId.size()) {
+//            status = panelId.get(ix).contentEquals("Script");
+//        }
+//        return status;
+//    }
 
     private static void enableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("Invalid label name: " + buttonName);
+            setStatusError("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setEnabled(true);
@@ -306,7 +325,7 @@ public class GuiPanel {
     private static void disableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("Invalid label name: " + buttonName);
+            setStatusError("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setEnabled(false);
@@ -318,7 +337,7 @@ public class GuiPanel {
         }
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("Invalid label name: " + buttonName);
+            setStatusError("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setText(text);
@@ -329,52 +348,80 @@ public class GuiPanel {
             text = "";
         }
         if (labelName == null) {
-            setStatusError("Null label name");
+            setStatusError("GUI: Null label name");
             return;
         }
         JLabel label = guiControls.getLabel(labelName);
         if (label == null) {
-            setStatusError("Invalid label name: " + labelName);
+            setStatusError("GUI: Invalid label name: " + labelName);
             return;
         }
         label.setText(text);
     }
     
     public static void clearStatusError () {
-        JLabel textField = guiControls.getLabel("LBL_STATUS");
-        if (textField != null) {
-            textField.setText("");
+        String name = "LBL_STATUS";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            Output.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
         }
+    }
+    
+    public static void setStatusMessage (String text) {
+        String name = "LBL_STATUS";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            Output.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setForeground(Color.black);
+            label.setText(text);
+        }
+        Output.print("STATUS: " + text);
     }
     
     public static void setStatusError (String text) {
-        JLabel textField = guiControls.getLabel("LBL_STATUS");
-        if (textField != null) {
-            textField.setForeground(Color.red);
-            textField.setText(text);
+        String name = "LBL_STATUS";
+        text = "ERROR: " + text;
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            Output.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setForeground(Color.red);
+            label.setText(text);
         }
+        Output.print(text);
     }
     
     public static void clearCommandLine () {
-        JLabel textField = guiControls.getLabel("LBL_COMMAND");
-        if (textField != null) {
-            textField.setText("");
+        String name = "LBL_COMMAND";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            Output.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
         }
     }
     
     public static void setCommandLine (String text) {
-        JLabel textField = guiControls.getLabel("LBL_COMMAND");
-        if (textField != null) {
-            textField.setForeground(Color.black);
-            textField.setText(text);
+        String name = "LBL_COMMAND";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            Output.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setForeground(Color.black);
+            label.setText(text);
         }
     }
     
     private static void updateStateLabel (String text) {
-        // update display
+        String name = "TXT_STATE";
         if (! text.isEmpty()) {
-            JTextField textField = guiControls.getTextField("TXT_STATE");
-            if (textField != null) {
+            JTextField textField = guiControls.getTextField(name);
+            if (textField == null) {
+                Output.print("ERROR: GUI: Invalid textField name: " + name);
+            } else {
                 textField.setForeground(Color.black);
                 textField.setText(text);
             }
@@ -510,7 +557,7 @@ public class GuiPanel {
         if (tcpClient == null || !connected) {
             setStatusError("Send to SERVER when Server not connected: " + message);
         } else {
-            System.out.println("Send to SERVER: " + message);
+            Output.print("CLIENT: Send to SERVER: " + message);
             tcpClient.sendMessage(message);
         }
     }
@@ -541,29 +588,29 @@ public class GuiPanel {
         }
     }
   
-    private static void saveScriptButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        String defaultName = "program";
-        FileNameExtensionFilter filter = new FileNameExtensionFilter("Script Files", "scr");
-        fileSelector.setFileFilter(filter);
-        fileSelector.setApproveButtonText("Save");
-        fileSelector.setMultiSelectionEnabled(false);
-        fileSelector.setSelectedFile(new File(defaultName + ".scr"));
-        int retVal = fileSelector.showOpenDialog(guiControls.getFrame());
-        if (retVal == JFileChooser.APPROVE_OPTION) {
-            File file = fileSelector.getSelectedFile();
-            // get the base name without extension so we can create matching json and png files
-            String basename = file.getAbsolutePath();
-            int offset = basename.lastIndexOf('.');
-            if (offset > 0) {
+//    private static void saveScriptButtonActionPerformed(java.awt.event.ActionEvent evt) {
+//        String defaultName = "program";
+//        FileNameExtensionFilter filter = new FileNameExtensionFilter("Script Files", "scr");
+//        fileSelector.setFileFilter(filter);
+//        fileSelector.setApproveButtonText("Save");
+//        fileSelector.setMultiSelectionEnabled(false);
+//        fileSelector.setSelectedFile(new File(defaultName + ".scr"));
+//        int retVal = fileSelector.showOpenDialog(guiControls.getFrame());
+//        if (retVal == JFileChooser.APPROVE_OPTION) {
+//            File file = fileSelector.getSelectedFile();
+//            // get the base name without extension so we can create matching json and png files
+//            String basename = file.getAbsolutePath();
+//            int offset = basename.lastIndexOf('.');
+//            if (offset > 0) {
 //                basename = basename.substring(0, offset);
-            }
-
-            // remove any pre-existing file and save updated script
+//            }
+//
+//            // remove any pre-existing file and save updated script
 //            File scriptFile = new File(basename + ".scr");
 //           scriptFile.delete();
 //            Script.dataSave(graphFile);
-        }
-    }
+//        }
+//    }
   
     public static void processMessage(String message) {
         // seperate message into the message type and the message content
@@ -578,8 +625,10 @@ public class GuiPanel {
         if (msgDisplay.length() > 120) {
             msgDisplay = msgDisplay.substring(0, 120) + "...";
         }
-        System.out.println("SERVER: " + message);
-        // TODO: all System.out msgs should got to a new panel that shows activity
+        // output all server messages that do not go to the Debug log window to the Output window.
+        if (! command.contentEquals("LOGMSG:")) {
+            Output.print("SERVER: " + message);
+        }
         
         switch (command) {
             case "STATUS:":
@@ -595,7 +644,7 @@ public class GuiPanel {
                 try {
                     lineNum = Integer.valueOf(strValue);
                 } catch (NumberFormatException ex) {
-                    setStatusError("ERROR: Invalid Integer value for line: '" + strValue + "'");
+                    setStatusError("Invalid Integer value for line: '" + strValue + "'");
                     break;
                 }
                 // TODO: highlight the line number
@@ -622,7 +671,7 @@ public class GuiPanel {
                 Variables.allocationMessage(message);
                 break;
             default:
-                System.out.println("GuiPanel.processMessage: Invalid command: " + message);
+                Output.print("ERROR: GuiPanel.processMessage: Invalid command: " + message);
                 break;
         }
     }

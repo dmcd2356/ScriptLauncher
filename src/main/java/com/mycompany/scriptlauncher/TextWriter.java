@@ -119,9 +119,9 @@ public class TextWriter {
                 }
                 textPane.getDocument().remove(0, start);
                 len = textPane.getDocument().getLength();
-                System.out.println("Reduced text from " + oldlen + " to " + len);
+                Output.print("STATUS: TextWriter.appendToPane: Reduced text from " + oldlen + " to " + len);
             } catch (BadLocationException ex) {
-                System.out.println(ex.getMessage());
+                Output.print("ERROR: " + ex.getMessage());
             }
         }
 

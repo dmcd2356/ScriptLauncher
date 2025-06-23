@@ -45,7 +45,7 @@ public class TCPClient {
         tcpPort = port;
         PropertiesFile props = new PropertiesFile();
         props.setPropertiesItem("Port", Integer.toUnsignedString(port));
-        System.out.println("Checking for TCP connection on port " + tcpPort + "...");
+        Output.print("STATUS: Checking for TCP connection on port " + tcpPort + "...");
         connectThread.start();
     }
     
@@ -71,7 +71,7 @@ public class TCPClient {
                     }
                 }
             }
-            System.out.println("Successfully connected to the TCP server on port " + tcpPort);
+            Output.print("STATUS: Successfully connected to the TCP server on port " + tcpPort);
             GuiPanel.serverConnected();
 
             // Set up input and output streams for communication
@@ -96,7 +96,7 @@ public class TCPClient {
                     message = in_socket.readLine();
                     GuiPanel.processMessage(message);
                 }
-                System.out.println("Port " + tcpPort + " has been closed.");
+                Output.print("STATUS: Port " + tcpPort + " has been closed.");
                 GuiPanel.serverDisconnected();
             } catch (IOException exMsg) {
                 if (! socket.isClosed()) {
@@ -110,7 +110,7 @@ public class TCPClient {
         // Close the connection
         socket.close();
         //socket = null;
-        System.out.println("Port " + tcpPort + " closed successfully.");
+        Output.print("STATUS: Port " + tcpPort + " closed successfully.");
     }
 
 }

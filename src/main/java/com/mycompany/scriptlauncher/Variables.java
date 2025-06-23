@@ -155,17 +155,17 @@ public class Variables {
         // first, clear the display the display
         textPane.setText("");
 
-        // set the tab stops (NAME is at offset 0)
+        // set the tab stops for Loops (NAME is at offset 0)
         int tab1 = 25;          // OWNER offset: handles variable names up to 24 in length
         int tab2 = tab1 + 15;   // TYPE  offset: handles subroutines up to 14 in length
-        int tab3 = tab2 + 12;   // VALUE or WRITER offset: max length of type is 8
-        int tab4 = tab3 + 15;   // WRITER LINE offset: handles subroutines up to 14 in length
-        int tab5 = tab4 + 6;    // WRITER TIME offset: max line number of 4
-        int tab6 = tab5 + 12;   // VALUE offset: time is always 9 chars long:  00:00.000
-        int tab7 = tab6 + 6;    // 
-        int tab8 = tab7 + 6;    // 
+        int tab3 = tab2 + 12;   // VALUE offset: data type is ALWAYS Integer = 7
+        int tab4 = tab3 + 8;    // START offset: max expected length of numeric value is 6
+        int tab5 = tab4 + 8;    // STOP  offset: max expected length of numeric value is 6
+        int tab6 = tab5 + 8;    // STEP  offset: max expected length of numeric value is 6
+        int tab7 = tab6 + 8;    // INCL  offset: max expected length of numeric value is 6
+        int tab8 = tab7 + 8;    // COMP  offset: max length of Incl is 5 (true or false)
         
-        // now display each section
+        // setup the header for Loops
         String title = "Variable name";
         title = addTabPadding (tab1, title) + "Owner";
         title = addTabPadding (tab2, title) + "Data type";
@@ -175,6 +175,7 @@ public class Variables {
         title = addTabPadding (tab6, title) + "Step";
         title = addTabPadding (tab7, title) + "Incl";
         title = addTabPadding (tab8, title) + "Comp";
+        
         if (! varLoop.isEmpty()) {
             printType(MessageType.Title, true, "=== LOOPS ===============================================================================================");
             printType(MessageType.Title, true, title);
@@ -202,14 +203,24 @@ public class Variables {
             }
             printlf();
         }
-        if (! varReserved.isEmpty()) {
-            title = "Variable name";
+
+        // update tab stops and title bar for all other parameters
+        tab1 = 25;          // OWNER  offset: handles variable names up to 24 in length
+        tab2 = tab1 + 15;   // TYPE   offset: handles subroutines up to 14 in length
+        tab3 = tab2 + 12;   // WRITER offset: max length of type is 8
+        tab4 = tab3 + 15;   // LINE   offset: handles subroutines up to 14 in length
+        tab5 = tab4 + 8;    // TIME   offset: max line number of 4
+        tab6 = tab5 + 12;   // VALUE offset: time is always 9 chars long:  00:00.000
+        
+        title = "Variable name";
         title = addTabPadding (tab1, title) + "Owner";
         title = addTabPadding (tab2, title) + "Data type";
         title = addTabPadding (tab3, title) + "Writer";
         title = addTabPadding (tab4, title) + "Line";
         title = addTabPadding (tab5, title) + "Time";
         title = addTabPadding (tab6, title) + "Value";
+
+        if (! varReserved.isEmpty()) {
             printType(MessageType.Title, true, "=== RESERVED ============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
@@ -234,14 +245,6 @@ public class Variables {
             }
             printlf();
         }
-
-        title = "Variable name";
-        title = addTabPadding (tab1, title) + "Owner";
-        title = addTabPadding (tab2, title) + "Data type";
-        title = addTabPadding (tab3, title) + "Writer";
-        title = addTabPadding (tab4, title) + "Line";
-        title = addTabPadding (tab5, title) + "Time";
-        title = addTabPadding (tab6, title) + "Value";
         if (! varGlobal.isEmpty()) {
             printType(MessageType.Title, true, "=== GLOBALS =============================================================================================");
             printType(MessageType.Title, true, title);
@@ -321,7 +324,7 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusError("ERROR: ALLOC command - Invalid type " + entry);
+                        GuiPanel.setStatusError("ALLOC command - Invalid type " + entry);
                 }
                 return;
             } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
@@ -331,7 +334,7 @@ public class Variables {
                 return;
             }
         }
-        GuiPanel.setStatusError("ERROR: ALLOC command - Invalid format: " + message);
+        GuiPanel.setStatusError("ALLOC command - Invalid format: " + message);
     }
 
     /**
@@ -358,7 +361,7 @@ public class Variables {
                 String entry = contents.get(ix).strip();
                 int offset = entry.indexOf(' ');
                 if (offset <= 0) {
-                    GuiPanel.setStatusError("ERROR: VARMSG command - invalid entry format: " + entry);
+                    GuiPanel.setStatusError("VARMSG command - invalid entry format: " + entry);
                     return;
                 }
                 String key  = entry.substring(0, offset).strip();
@@ -404,12 +407,12 @@ public class Variables {
                         comp = item;
                         break;
                     default:
-                        GuiPanel.setStatusError("ERROR: VARMSG command - Invalid key: " + key);
+                        GuiPanel.setStatusError("VARMSG command - Invalid key: " + key);
                         return;
                 }
             }
             if (name == null) {
-                GuiPanel.setStatusError("ERROR: VARMSG command - missing <name> entry");
+                GuiPanel.setStatusError("VARMSG command - missing <name> entry");
                 return;
             }
 
@@ -502,7 +505,7 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusError("ERROR: VARMSG command - Invalid section: " + sect);
+                        GuiPanel.setStatusError("VARMSG command - Invalid section: " + sect);
                 }
                 if (! bFound) {
                     GuiPanel.setStatusError(sect + " variable not found: " + name);
