@@ -17,8 +17,8 @@ public class ScriptLauncher {
 
     private static final String CLASS_NAME = ScriptLauncher.class.getSimpleName();
     
-    // init these to defaults
-    private static final int SERVER_PORT = 5001;
+    // port to use if not found in PropertiesFile
+    private static final int SERVER_PORT = 6000;
 
     /**
      * @param args the command line arguments (optional port selection)
@@ -26,7 +26,9 @@ public class ScriptLauncher {
      * @throws java.io.IOException
      */
     public static void main(String[] args) throws IOException {
-        int port = SERVER_PORT;
+        PropertiesFile props = new PropertiesFile();
+        String strPort = props.getPropertiesItem("Port", Integer.toUnsignedString(SERVER_PORT));
+        int port = Integer.parseInt(strPort);
         if (args.length > 0) {
             try {
                 port = Integer.parseInt(args[0]);

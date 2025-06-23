@@ -204,9 +204,12 @@ public class Variables {
         }
         if (! varReserved.isEmpty()) {
             title = "Variable name";
-            title = addTabPadding (tab1, title) + "Owner";
-            title = addTabPadding (tab2, title) + "Data type";
-            title = addTabPadding (tab3, title) + "Value";
+        title = addTabPadding (tab1, title) + "Owner";
+        title = addTabPadding (tab2, title) + "Data type";
+        title = addTabPadding (tab3, title) + "Writer";
+        title = addTabPadding (tab4, title) + "Line";
+        title = addTabPadding (tab5, title) + "Time";
+        title = addTabPadding (tab6, title) + "Value";
             printType(MessageType.Title, true, "=== RESERVED ============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
@@ -219,7 +222,10 @@ public class Variables {
                 String line = varInfo.getName();
                 line = addTabPadding (tab1, line) + "----";
                 line = addTabPadding (tab2, line) + varInfo.getType().toString();
-                line = addTabPadding (tab3, line) + value;
+                line = addTabPadding (tab3, line) + varInfo.getWriter();
+                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
+                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
+                line = addTabPadding (tab6, line) + value;
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {

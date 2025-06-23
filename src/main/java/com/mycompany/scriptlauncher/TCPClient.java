@@ -43,6 +43,8 @@ public class TCPClient {
         
         // Connect to the server at localhost on specified port
         tcpPort = port;
+        PropertiesFile props = new PropertiesFile();
+        props.setPropertiesItem("Port", Integer.toUnsignedString(port));
         System.out.println("Checking for TCP connection on port " + tcpPort + "...");
         connectThread.start();
     }
@@ -88,15 +90,18 @@ public class TCPClient {
     Thread runThread = new Thread(new Runnable() {
         @Override
         public void run() {
-            String message;
+            String message = "";
             try {
-                while ((message = in_socket.readLine()) != null) {
+                while (message != null && socket != null && !socket.isClosed()) {
+                    message = in_socket.readLine();
                     GuiPanel.processMessage(message);
                 }
                 System.out.println("Port " + tcpPort + " has been closed.");
                 GuiPanel.serverDisconnected();
             } catch (IOException exMsg) {
-                exMsg.printStackTrace();
+                if (! socket.isClosed()) {
+                    exMsg.printStackTrace();
+                }
             }
         }
     });
@@ -104,7 +109,7 @@ public class TCPClient {
     public void exit () throws IOException {
         // Close the connection
         socket.close();
-        socket = null;
+        //socket = null;
         System.out.println("Port " + tcpPort + " closed successfully.");
     }
 

@@ -20,7 +20,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
-import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
@@ -66,7 +65,6 @@ public class GuiPanel {
             guiControls.close();
         }
 
-        String portInfo = "TCP port " + port;
         connected = false;
         portConnection = port;
 
@@ -80,13 +78,17 @@ public class GuiPanel {
         guiControls.newFrame(panelName, 1200, 600, false);
 
         // create the entries in the main frame
-        guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"  , LEFT , false);
-        guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File" , LEFT , true);
-        guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"    , LEFT , false);
-        guiControls.makePanel (null, "PNL_CONTROL2"   , ""            , RIGHT, true);
-        guiControls.makePanel (null, "PNL_STATUS"     , "Status"      , LEFT , true);
+        guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT , false);
+        guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT , true);
+        guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT , false);
+        guiControls.makePanel (null, "PNL_CONTROL2"   , ""             , RIGHT, true);
+        guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT , true);
+        guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT , true);
+
         var statPanel = guiControls.getPanel ("PNL_STATUS");
         statPanel.setMinimumSize(new Dimension(1200, 40));
+        var ctrlPanel = guiControls.getPanel ("PNL_COMMAND");
+        ctrlPanel.setMinimumSize(new Dimension(1200, 40));
 
         panel = "PNL_CONNECT";
         guiControls.makeButton   (panel, "BTN_CONNECT", "Connect"     , LEFT, false);
@@ -111,11 +113,16 @@ public class GuiPanel {
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
 
         panel = "PNL_STATUS";
-//        guiControls.makeTextField(panel, "TXT_STATUS", "", LEFT, true, 1100, "", false);
         String emptySpace = "                                                                                                                        ";
         guiControls.makeLabel (panel, "LBL_STATUS"   , "" , LEFT , false);
         guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
         JLabel textField = guiControls.getLabel("LBL_STATUS");
+        textField.setMinimumSize(new Dimension(1200, 25));
+        
+        panel = "PNL_COMMAND";
+        guiControls.makeLabel (panel, "LBL_COMMAND"  , "" , LEFT , false);
+        guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
+        textField = guiControls.getLabel("LBL_COMMAND");
         textField.setMinimumSize(new Dimension(1200, 25));
         
         // add the Script panel to the tabs
@@ -154,12 +161,14 @@ public class GuiPanel {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loadScriptButtonActionPerformed(evt);
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_COMPILE")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 sendMessage("COMPILE");
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_RUN")).addActionListener(new ActionListener() {
@@ -174,6 +183,7 @@ public class GuiPanel {
                     runButton.setText("Run");
                     sendMessage("STOP");
                 }
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_PAUSE")).addActionListener(new ActionListener() {
@@ -188,6 +198,7 @@ public class GuiPanel {
                     pauseButton.setText("Pause");
                     sendMessage("RESUME");
                 }
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_CONNECT")).addActionListener(new ActionListener() {
@@ -221,6 +232,7 @@ public class GuiPanel {
                 } else {
                     pauseButton.setText("Connect");
                 }
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_STEP")).addActionListener(new ActionListener() {
@@ -228,12 +240,14 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 Variables.resetChanged();
                 sendMessage("STEP");
+                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_EXIT")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 sendMessage("EXIT");
+                clearStatusError();
             }
         });
 //        (guiControls.getButton("BTN_CLEAR")).addActionListener(new ActionListener() {
@@ -259,6 +273,19 @@ public class GuiPanel {
         }
     }
 
+    private static void formWindowClosing(java.awt.event.WindowEvent evt) {
+        if (tcpClient != null)
+        {
+            try {
+                tcpClient.exit();
+            } catch (IOException exMsg) {
+                // nothing to do.
+            }
+        }
+        guiControls.close();
+        System.exit(0);
+    }
+
     public static boolean isDebugMsgTabSelected() {
         return tabPanel.getSelectedIndex() == 0;
     }
@@ -267,28 +294,78 @@ public class GuiPanel {
         return tabPanel.getSelectedIndex() == 1;
     }
 
-    private static void enableButton (boolean status, String buttonName) {
+    private static void enableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
-        button.setEnabled(status);
+        if (button == null) {
+            setStatusError("Invalid label name: " + buttonName);
+            return;
+        }
+        button.setEnabled(true);
+    }
+
+    private static void disableButton (String buttonName) {
+        JButton button = guiControls.getButton(buttonName);
+        if (button == null) {
+            setStatusError("Invalid label name: " + buttonName);
+            return;
+        }
+        button.setEnabled(false);
+    }
+
+    private static void setButtonText (String buttonName, String text) {
+        if (text == null) {
+            text = "";
+        }
+        JButton button = guiControls.getButton(buttonName);
+        if (button == null) {
+            setStatusError("Invalid label name: " + buttonName);
+            return;
+        }
+        button.setText(text);
     }
     
     private static void setLabelText (String labelName, String text) {
+        if (text == null) {
+            text = "";
+        }
         if (labelName == null) {
-            // TODO: display error
+            setStatusError("Null label name");
             return;
         }
         JLabel label = guiControls.getLabel(labelName);
         if (label == null) {
-            // TODO: display label name not found error
+            setStatusError("Invalid label name: " + labelName);
             return;
         }
         label.setText(text);
+    }
+    
+    public static void clearStatusError () {
+        JLabel textField = guiControls.getLabel("LBL_STATUS");
+        if (textField != null) {
+            textField.setText("");
+        }
     }
     
     public static void setStatusError (String text) {
         JLabel textField = guiControls.getLabel("LBL_STATUS");
         if (textField != null) {
             textField.setForeground(Color.red);
+            textField.setText(text);
+        }
+    }
+    
+    public static void clearCommandLine () {
+        JLabel textField = guiControls.getLabel("LBL_COMMAND");
+        if (textField != null) {
+            textField.setText("");
+        }
+    }
+    
+    public static void setCommandLine (String text) {
+        JLabel textField = guiControls.getLabel("LBL_COMMAND");
+        if (textField != null) {
+            textField.setForeground(Color.black);
             textField.setText(text);
         }
     }
@@ -324,61 +401,64 @@ public class GuiPanel {
         switch (state) {
             case "STARTUP":
                 procState = ProcState.STARTUP;
-                enableButton(true , "BTN_CONNECT");
-                enableButton(false, "BTN_LOAD");
-                enableButton(false, "BTN_COMPILE");
-                enableButton(false, "BTN_RUN");
-                enableButton(false, "BTN_PAUSE");
-                enableButton(false, "BTN_STEP");
-                enableButton(false, "BTN_BREAKPT");
-                enableButton(false, "BTN_EXIT");
+                enableButton ("BTN_CONNECT");
+                disableButton("BTN_LOAD");
+                disableButton("BTN_COMPILE");
+                disableButton("BTN_RUN");
+                disableButton("BTN_PAUSE");
+                disableButton("BTN_STEP");
+                disableButton("BTN_BREAKPT");
+                disableButton("BTN_EXIT");
+                clearCommandLine();
                 break;
             case "CONNECTED":
                 connected = true;
                 updateStateLabel (state);
-                enableButton(true , "BTN_CONNECT");
-                enableButton(true , "BTN_LOAD");
-                enableButton(false, "BTN_COMPILE");
-                enableButton(false, "BTN_RUN");
-                enableButton(false, "BTN_PAUSE");
-                enableButton(false, "BTN_STEP");
-                enableButton(false, "BTN_BREAKPT");
-                enableButton(true , "BTN_EXIT");
-                button = guiControls.getButton("BTN_CONNECT");
-                button.setText("Connect");
-                label = guiControls.getLabel("LBL_LOAD");
-                label.setText("");
-                setStatusError ("");
+                enableButton ("BTN_CONNECT");
+                enableButton ("BTN_LOAD");
+                disableButton("BTN_COMPILE");
+                disableButton("BTN_RUN");
+                disableButton("BTN_PAUSE");
+                disableButton("BTN_STEP");
+                disableButton("BTN_BREAKPT");
+                enableButton ("BTN_EXIT");
+                setButtonText("BTN_CONNECT", "Disconnect");
+                setLabelText ("LBL_LOAD", "");
+                clearStatusError ();
+                clearCommandLine();
                 break;
             case "DISCONNECTED":
                 connected = false;
                 updateStateLabel (state);
-                enableButton(true , "BTN_CONNECT");
-                enableButton(false, "BTN_LOAD");
-                enableButton(false, "BTN_COMPILE");
-                enableButton(false, "BTN_RUN");
-                enableButton(false, "BTN_PAUSE");
-                enableButton(false, "BTN_STEP");
-                enableButton(false, "BTN_BREAKPT");
-                enableButton(false, "BTN_EXIT");
-                button = guiControls.getButton("BTN_CONNECT");
-                button.setText("Connect");
-                label = guiControls.getLabel("LBL_LOAD");
-                label.setText("");
+                enableButton ("BTN_CONNECT");
+                disableButton("BTN_LOAD");
+                disableButton("BTN_COMPILE");
+                disableButton("BTN_RUN");
+                disableButton("BTN_PAUSE");
+                disableButton("BTN_STEP");
+                disableButton("BTN_BREAKPT");
+                disableButton("BTN_EXIT");
+                setButtonText("BTN_CONNECT", "Connect");
+                setLabelText ("LBL_LOAD", "");
                 break;
             case "LOADED":
                 procState = ProcState.LOADED;
-                enableButton(true , "BTN_COMPILE");
+                enableButton ("BTN_COMPILE");
+                disableButton("BTN_RUN");
+                disableButton("BTN_PAUSE");
+                disableButton("BTN_STEP");
+                disableButton("BTN_BREAKPT");
                 updateStateLabel (state);
+                clearCommandLine();
                 break;
             case "COMPILED":
                 procState = ProcState.COMPILED;
                 updateStateLabel (state);
-                enableButton(true , "BTN_RUN");
-                enableButton(true , "BTN_STEP");
-                enableButton(true , "BTN_BREAKPT");
-                button = guiControls.getButton("BTN_RUN");
-                button.setText("Run");
+                enableButton("BTN_RUN");
+                enableButton("BTN_STEP");
+                enableButton("BTN_BREAKPT");
+                setButtonText("BTN_RUN", "Run");
+                clearCommandLine();
                 break;
             case "EOF":
             case "STOPPED":
@@ -386,37 +466,31 @@ public class GuiPanel {
                 procState = ProcState.COMPILED;
                 updateStateLabel (state);
                 Variables.print();
-                enableButton(true , "BTN_RUN");
-                enableButton(true , "BTN_STEP");
-                enableButton(false, "BTN_PAUSE");
-                button = guiControls.getButton("BTN_PAUSE");
-                button.setText("Pause");
-                button = guiControls.getButton("BTN_RUN");
-                button.setText("Run");
+                enableButton ("BTN_RUN");
+                enableButton ("BTN_STEP");
+                disableButton("BTN_PAUSE");
+                setButtonText("BTN_PAUSE", "Pause");
+                setButtonText("BTN_RUN", "Run");
                 // TODO: set highlighted line to line 1
                 break;
             case "PAUSED":
                 procState = ProcState.PAUSED;
                 updateStateLabel (state);
                 Variables.print();
-                enableButton(true , "BTN_RUN");
-                enableButton(true , "BTN_STEP");
-                enableButton(true , "BTN_PAUSE");
-                button = guiControls.getButton("BTN_PAUSE");
-                button.setText("Resume");
-                button = guiControls.getButton("BTN_RUN");
-                button.setText("Run");
+                enableButton("BTN_RUN");
+                enableButton("BTN_STEP");
+                enableButton("BTN_PAUSE");
+                setButtonText("BTN_PAUSE", "Resume");
+                setButtonText("BTN_RUN", "Run");
                 break;
             case "RESUMED":
                 procState = ProcState.COMPILED;
                 updateStateLabel (state);
-                enableButton(true , "BTN_RUN");
-                enableButton(true , "BTN_STEP");
-                enableButton(true , "BTN_PAUSE");
-                button = guiControls.getButton("BTN_PAUSE");
-                button.setText("Pause");
-                button = guiControls.getButton("BTN_RUN");
-                button.setText("Stop");
+                enableButton("BTN_RUN");
+                enableButton("BTN_STEP");
+                enableButton("BTN_PAUSE");
+                setButtonText("BTN_PAUSE", "Pause");
+                setButtonText("BTN_RUN", "Stop");
                 break;
             default:
                 setStatusError("Invalid STATUS command: " + state);
@@ -452,6 +526,7 @@ public class GuiPanel {
         if (retVal == JFileChooser.APPROVE_OPTION) {
             // set the file to read from
             File file = fileSelector.getSelectedFile();
+            Script.clear();
             Script.print(file);
             setLabelText("LBL_LOAD", file.getAbsolutePath());
 
@@ -480,7 +555,7 @@ public class GuiPanel {
             String basename = file.getAbsolutePath();
             int offset = basename.lastIndexOf('.');
             if (offset > 0) {
-                basename = basename.substring(0, offset);
+//                basename = basename.substring(0, offset);
             }
 
             // remove any pre-existing file and save updated script
@@ -490,20 +565,6 @@ public class GuiPanel {
         }
     }
   
-    private static void formWindowClosing(java.awt.event.WindowEvent evt) {
-//        tcpThread.exit();
-        guiControls.close();
-        System.exit(0);
-    }
-
-    private static void resetCapturedInput() {
-        // clear the packet buffer and statistics
-//        tcpThread.clear();
-
-        // clear the text panel
-        Logger.clear();
-    }
-
     public static void processMessage(String message) {
         // seperate message into the message type and the message content
         if (message == null || message.isBlank()) {
@@ -530,13 +591,16 @@ public class GuiPanel {
                     break;
                 }
                 String strValue = words.get(1);
+                Integer lineNum = 1;
                 try {
-                    Integer.valueOf(strValue);
+                    lineNum = Integer.valueOf(strValue);
                 } catch (NumberFormatException ex) {
                     setStatusError("ERROR: Invalid Integer value for line: '" + strValue + "'");
                     break;
                 }
                 // TODO: highlight the line number
+                String line = Script.getLine(lineNum);
+                setCommandLine(line);
                 break;
             case "LOGMSG:":
                 // add the log info to the log screen

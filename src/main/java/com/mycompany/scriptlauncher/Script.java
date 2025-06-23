@@ -71,6 +71,15 @@ public class Script {
         }
     }
 
+    public static String getLine (int lineNum) {
+        String line = "";
+        
+        if (lineNum >= 1 && lineNum < scriptFile.size()) {
+            line = scriptFile.get(lineNum - 1);
+        }
+        return lineNum + ": " + line;
+    }
+    
     /**
      * outputs the script file contents to the Script display.
      * 
