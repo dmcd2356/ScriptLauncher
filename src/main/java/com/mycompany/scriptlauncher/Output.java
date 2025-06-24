@@ -61,7 +61,7 @@ public class Output {
      * @param message   - the message contents
      */
     public static final void print(String message) {
-        if (textPane != null && message != null && message.length() > 30) {
+        if (textPane != null && message != null) {
             FontInfo msgFont = new FontInfo(FontInfo.TextColor.Black,
                                               FontInfo.FontType.Normal, 11, "Courier");
             // extract pertinant info from the message

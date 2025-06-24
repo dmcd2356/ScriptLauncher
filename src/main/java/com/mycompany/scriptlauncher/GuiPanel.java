@@ -78,12 +78,13 @@ public class GuiPanel {
         guiControls.newFrame(panelName, 1200, 900, false);
 
         // create the entries in the main frame
-        guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT , false);
-        guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT , true);
-        guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT , false);
-        guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT, true);
-        guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT , true);
-        guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT , true);
+        guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT  , false);
+        guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT  , true);
+        guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT  , false);
+        guiControls.makePanel (null, "PNL_BREAKPT"    , "Breakpoints"  , CENTER, false);
+        guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT , true);
+        guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT  , true);
+        guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT  , true);
 
         var statPanel = guiControls.getPanel ("PNL_STATUS");
         statPanel.setMinimumSize(new Dimension(1200, 40));
@@ -104,9 +105,12 @@ public class GuiPanel {
         guiControls.makeButton(panel, "BTN_COMPILE"  , "Compile"  , LEFT , false);
         guiControls.makeButton(panel, "BTN_RUN"      , "Run"      , LEFT , false);
         guiControls.makeButton(panel, "BTN_PAUSE"    , "Pause"    , LEFT , false);
-        guiControls.makeButton(panel, "BTN_STEP"     , "Step"     , LEFT , false);
-        guiControls.makeLabel (panel, ""             , "        " , LEFT , false); // dummy
-        guiControls.makeButton(panel, "BTN_BREAKPT"  , "Breakpt"  , LEFT , true);
+        guiControls.makeButton(panel, "BTN_STEP"     , "Step"     , LEFT , true);
+
+        panel = "PNL_BREAKPT";
+        guiControls.makeButton(panel, "BTN_BREAKPT"  , "Enable"   , LEFT , false);
+        guiControls.makeTextField(panel, "TXT_BREAKPT", ""        , LEFT , false, 30, "", true);
+        guiControls.makeLabel (panel, "LBL_BREAKPT"  , "OFF"      , LEFT , true);
 
         panel = "PNL_TERMINATE";
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
@@ -190,15 +194,29 @@ public class GuiPanel {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton runButton = guiControls.getButton("BTN_RUN");
-                if (runButton.getText().equals("Run")) {
-                    Output.print("STATUS: RUN button pressed");
-                    Variables.resetChanged();
-                    runButton.setText("Stop");
-                    sendMessage("RUN");
-                } else {
-                    Output.print("STATUS: STOP button pressed");
-                    runButton.setText("Run");
-                    sendMessage("STOP");
+                String curButton = runButton.getText();
+                switch (curButton) {
+                    case "Run":
+                        Output.print("STATUS: RUN button pressed");
+                        Variables.resetChanged();
+                        runButton.setText("Stop");
+                        sendMessage("RUN");
+                        break;
+                    case "Stop":
+                        Output.print("STATUS: STOP button pressed");
+                        runButton.setText("Run");
+                        sendMessage("STOP");
+                        break;
+                    case "Reset":
+                        // TODO: set highlighted line to line 1
+                        Output.print("STATUS: RESET button pressed");
+                        runButton.setText("Run");
+                        JButton stepButton = guiControls.getButton("BTN_STEP");
+                        stepButton.setEnabled(true);
+                        sendMessage("RESET");
+                        break;
+                    default:
+                        break;
                 }
                 clearStatusError();
             }
@@ -251,6 +269,7 @@ public class GuiPanel {
                     pauseButton.setText("Disconnect");
                 } else {
                     Output.print("STATUS: DISCONNECT button pressed");
+                    sendMessage("DISCONNECT");
                     pauseButton.setText("Connect");
                 }
                 clearStatusError();
@@ -262,6 +281,18 @@ public class GuiPanel {
                 Output.print("STATUS: STEP button pressed");
                 Variables.resetChanged();
                 sendMessage("STEP");
+                clearStatusError();
+            }
+        });
+        (guiControls.getButton("BTN_BREAKPT")).addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                JButton breakButton = guiControls.getButton("BTN_BREAKPT");
+                if (breakButton.getText().equals("Enable")) {
+                    breakpointSet();
+                } else {
+                    breakpointUnset();
+                }
                 clearStatusError();
             }
         });
@@ -294,6 +325,7 @@ public class GuiPanel {
     private static void formWindowClosing(java.awt.event.WindowEvent evt) {
         if (tcpClient != null)
         {
+            sendMessage("DISCONNECT");
             try {
                 tcpClient.exit();
             } catch (IOException exMsg) {
@@ -357,6 +389,54 @@ public class GuiPanel {
             return;
         }
         label.setText(text);
+    }
+
+    private static void breakpointEnable (boolean enable) {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+        breakButton.setEnabled(enable);
+        breakLabel.setEnabled(enable);
+        breakLine.setEnabled(enable);
+        breakButton.setText("Enable");
+        breakLabel.setText("OFF");
+        breakLine.setText("");
+    }
+    
+    private static void breakpointSet () {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+
+        String strLine = breakLine.getText();
+        try {
+            Integer.valueOf(strLine);
+        } catch (NumberFormatException exMsg) {
+            breakLine.setText("");
+            Output.print("ERROR: Invalid breakpoint entry: " + strLine);
+            return;
+        }
+
+        breakButton.setText("Disable");
+        breakLabel.setText("ON");
+        breakLine.setEnabled(false);
+
+        Output.print("STATUS: BREAKPT ON button pressed: line " + strLine);
+        sendMessage("BREAKPT " + strLine);
+    }
+    
+    private static void breakpointUnset () {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+
+        breakButton.setText("Enable");
+        breakLabel.setText("OFF");
+        breakLine.setText("");
+        breakLine.setEnabled(true);
+
+        Output.print("STATUS: BREAKPT OFF button pressed");
+        sendMessage("BREAKPT OFF");
     }
     
     public static void clearStatusError () {
@@ -454,8 +534,8 @@ public class GuiPanel {
                 disableButton("BTN_RUN");
                 disableButton("BTN_PAUSE");
                 disableButton("BTN_STEP");
-                disableButton("BTN_BREAKPT");
                 disableButton("BTN_EXIT");
+                breakpointEnable(false);
                 clearCommandLine();
                 break;
             case "CONNECTED":
@@ -467,8 +547,8 @@ public class GuiPanel {
                 disableButton("BTN_RUN");
                 disableButton("BTN_PAUSE");
                 disableButton("BTN_STEP");
-                disableButton("BTN_BREAKPT");
                 enableButton ("BTN_EXIT");
+                breakpointEnable(false);
                 setButtonText("BTN_CONNECT", "Disconnect");
                 setLabelText ("LBL_LOAD", "");
                 clearStatusError ();
@@ -483,8 +563,8 @@ public class GuiPanel {
                 disableButton("BTN_RUN");
                 disableButton("BTN_PAUSE");
                 disableButton("BTN_STEP");
-                disableButton("BTN_BREAKPT");
                 disableButton("BTN_EXIT");
+                breakpointEnable(false);
                 setButtonText("BTN_CONNECT", "Connect");
                 setLabelText ("LBL_LOAD", "");
                 break;
@@ -494,7 +574,7 @@ public class GuiPanel {
                 disableButton("BTN_RUN");
                 disableButton("BTN_PAUSE");
                 disableButton("BTN_STEP");
-                disableButton("BTN_BREAKPT");
+                breakpointEnable(false);
                 updateStateLabel (state);
                 clearCommandLine();
                 break;
@@ -503,24 +583,24 @@ public class GuiPanel {
                 updateStateLabel (state);
                 enableButton("BTN_RUN");
                 enableButton("BTN_STEP");
-                enableButton("BTN_BREAKPT");
+                breakpointEnable(true);
                 setButtonText("BTN_RUN", "Run");
                 clearCommandLine();
                 break;
             case "EOF":
             case "STOPPED":
-            case "STEPPED":
                 procState = ProcState.COMPILED;
                 updateStateLabel (state);
                 Variables.print();
                 enableButton ("BTN_RUN");
-                enableButton ("BTN_STEP");
+                disableButton("BTN_STEP");
                 disableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Pause");
-                setButtonText("BTN_RUN", "Run");
-                // TODO: set highlighted line to line 1
+                setButtonText("BTN_RUN", "Reset");
                 break;
             case "PAUSED":
+            case "STEPPED":
+            case "BREAK":
                 procState = ProcState.PAUSED;
                 updateStateLabel (state);
                 Variables.print();
@@ -528,7 +608,7 @@ public class GuiPanel {
                 enableButton("BTN_STEP");
                 enableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Resume");
-                setButtonText("BTN_RUN", "Run");
+                setButtonText("BTN_RUN", "Stop");
                 break;
             case "RESUMED":
                 procState = ProcState.COMPILED;
@@ -538,6 +618,11 @@ public class GuiPanel {
                 enableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Pause");
                 setButtonText("BTN_RUN", "Stop");
+                break;
+            case "BREAKPT SET":
+                break;
+            case "BREAKPT INVALID":
+                breakpointUnset();
                 break;
             default:
                 setStatusError("Invalid STATUS command: " + state);
@@ -648,8 +733,12 @@ public class GuiPanel {
                     break;
                 }
                 // TODO: highlight the line number
-                String line = Script.getLine(lineNum);
-                setCommandLine(line);
+                if (lineNum == 9999) {
+                    setCommandLine("END");
+                } else {
+                    String line = Script.getLine(lineNum);
+                    setCommandLine(line);
+                }
                 break;
             case "LOGMSG:":
                 // add the log info to the log screen
