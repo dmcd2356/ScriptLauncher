@@ -124,6 +124,46 @@ public class VarAccess {
     public void resetVarChanged() {
         this.bChanged = false;
     }
+
+    // re-init the data values & indicate data has changed
+    public void resetVarInfo() {
+        this.bInit     = false;
+        this.bChanged  = true;
+
+        // these hold who last wrote to the variable and when (only for LOCAL & GLOBAL)
+        this.writer    = null;
+        this.writeLine = null;
+        this.writeTime = null;
+
+        // these will hold the data value
+        this.strValue  = null;
+        this.strArray  = null;
+
+        // these hold loop-specific entries
+        this.start     = null;
+        this.end       = null;
+        this.step      = null;
+        this.incl      = null;
+        this.comp      = null;
+        
+        // init the value of the chosen type
+        switch (this.varType) {
+            case Integer:
+            case Unsigned:
+                this.strValue = "0";
+                break;
+            case Boolean:
+                this.strValue = "false";
+                break;
+            case String:
+                this.strValue = "";
+                break;
+            case StrArray:
+            case IntArray:
+                this.strArray = new ArrayList<>();
+                break;
+        }
+    }
     
     // returns the last writer (MAIN or subroutine) to the variable
     public String getWriter () {

@@ -62,13 +62,34 @@ public class Variables {
     /**
      * clears the display.
      */
-    private static void resetVariables() {
+    public static void clearVariables() {
         // reset the variable info gathered from the server
         varReserved = new ArrayList<>();
         varGlobal   = new ArrayList<>();
         varLocal    = new ArrayList<>();
         varLoop     = new ArrayList<>();
         subroutines = new HashMap<>();
+    }
+
+    /**
+     * clears the display.
+     */
+    public static void resetVariables() {
+        for (int ix = 0; ix < varReserved.size(); ix++) {
+            varReserved.get(ix).resetVarInfo();
+        }
+        for (int ix = 0; ix < varGlobal.size(); ix++) {
+            varGlobal.get(ix).resetVarInfo();
+        }
+        for (int ix = 0; ix < varLocal.size(); ix++) {
+            varLocal.get(ix).resetVarInfo();
+        }
+        for (int ix = 0; ix < varLoop.size(); ix++) {
+            varLoop.get(ix).resetVarInfo();
+        }
+        
+        // re-draw the variables
+        print();
     }
 
     /**
@@ -145,6 +166,124 @@ public class Variables {
     }
     
     /**
+     * finds the max string length of string entries in the variables.
+     * 
+     * @param section - section to examine
+     * @param entry   - type of entry to check
+     * 
+     * @return 
+     */
+    public static int getMaxLength (String section, String entry) {
+        int maxSize = 0;
+        String strval = "";
+        int length = 0;
+        switch (section) {
+            case "LOOPS":
+                for (int ix = 0; ix < varLoop.size(); ix++) {
+                    switch (entry) {
+                        case "NAME":
+                            strval = varLoop.get(ix).getName();
+                            break;
+                        default:
+                            break;
+                    }
+                    if (strval == null) {
+                        length = 8;
+                    } else {
+                        length = strval.length();
+                    }
+                    if (length > maxSize) {
+                        maxSize = length;
+                    }
+                }
+                break;
+            case "RESERVED":
+                for (int ix = 0; ix < varReserved.size(); ix++) {
+                    switch (entry) {
+                        case "NAME":
+                            strval = varReserved.get(ix).getName();
+                            break;
+                        case "OWNER":
+                            strval = varReserved.get(ix).getOwner();
+                            break;
+                        case "WRITER":
+                            strval = varReserved.get(ix).getWriter();
+                            break;
+                        default:
+                            break;
+                    }
+                    if (strval == null) {
+                        length = 8;
+                    } else {
+                        length = strval.length();
+                    }
+                    if (length > maxSize) {
+                        maxSize = length;
+                    }
+                }
+                break;
+            case "GLOBALS":
+                for (int ix = 0; ix < varGlobal.size(); ix++) {
+                    switch (entry) {
+                        case "NAME":
+                            strval = varGlobal.get(ix).getName();
+                            break;
+                        case "OWNER":
+                            strval = varGlobal.get(ix).getOwner();
+                            break;
+                        case "WRITER":
+                            strval = varGlobal.get(ix).getWriter();
+                            break;
+                        default:
+                            break;
+                    }
+                    if (strval == null) {
+                        length = 8;
+                    } else {
+                        length = strval.length();
+                    }
+                    if (length > maxSize) {
+                        maxSize = length;
+                    }
+                }
+                break;
+            case "LOCALS":
+                for (int ix = 0; ix < varLocal.size(); ix++) {
+                    switch (entry) {
+                        case "NAME":
+                            strval = varLocal.get(ix).getName();
+                            break;
+                        case "OWNER":
+                            strval = varLocal.get(ix).getOwner();
+                            break;
+                        case "WRITER":
+                            strval = varLocal.get(ix).getWriter();
+                            break;
+                        default:
+                            break;
+                    }
+                    if (strval == null) {
+                        length = 8;
+                    } else {
+                        length = strval.length();
+                    }
+                    if (length > maxSize) {
+                        maxSize = length;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        // limit to a range of 8 to 25 in length and then add 4 extra spaces of padding
+        if (maxSize < 8)
+            maxSize = 8;
+        else if (maxSize > 25)
+            maxSize = 25;
+        return maxSize + 4;
+    }
+    
+    /**
      * displays the variables received.
      */
     public static void print() {
@@ -155,46 +294,55 @@ public class Variables {
         // first, clear the display the display
         textPane.setText("");
 
-        // set the tab stops for Loops (NAME is at offset 0)
-        int tab1 = 25;          // OWNER offset: handles variable names up to 24 in length
-        int tab2 = tab1 + 15;   // TYPE  offset: handles subroutines up to 14 in length
-        int tab3 = tab2 + 12;   // VALUE offset: data type is ALWAYS Integer = 7
-        int tab4 = tab3 + 8;    // START offset: max expected length of numeric value is 6
-        int tab5 = tab4 + 8;    // STOP  offset: max expected length of numeric value is 6
-        int tab6 = tab5 + 8;    // STEP  offset: max expected length of numeric value is 6
-        int tab7 = tab6 + 8;    // INCL  offset: max expected length of numeric value is 6
-        int tab8 = tab7 + 8;    // COMP  offset: max length of Incl is 5 (true or false)
-        
-        // setup the header for Loops
-        String title = "Variable name";
-        title = addTabPadding (tab1, title) + "Owner";
-        title = addTabPadding (tab2, title) + "Data type";
-        title = addTabPadding (tab3, title) + "Value";
-        title = addTabPadding (tab4, title) + "Start";
-        title = addTabPadding (tab5, title) + "Stop";
-        title = addTabPadding (tab6, title) + "Step";
-        title = addTabPadding (tab7, title) + "Incl";
-        title = addTabPadding (tab8, title) + "Comp";
+        ArrayList<Integer> tabs = new ArrayList<>();
+        int taboff, lenName, lenOwner, lenWriter;
+        String sect;
         
         if (! varLoop.isEmpty()) {
+            // set the tab stops for Loops
+            sect = "LOOPS";
+            lenName = getMaxLength (sect, "NAME");
+
+            taboff = 0;                               // VAR NAME
+            taboff += lenName;  tabs.add(taboff);   // OWNER
+            taboff += 15;       tabs.add(taboff);   // TYPE
+            taboff += 12;       tabs.add(taboff);   // VALUE
+            taboff += 8;        tabs.add(taboff);   // START
+            taboff += 8;        tabs.add(taboff);   // STOP
+            taboff += 8;        tabs.add(taboff);   // STEP
+            taboff += 8;        tabs.add(taboff);   // INCL
+            taboff += 8;        tabs.add(taboff);   // COMP
+
+            int ix = 0;
+            String title = "Variable";
+            title = addTabPadding (tabs.get(ix++), title) + "Owner";
+            title = addTabPadding (tabs.get(ix++), title) + "Data type";
+            title = addTabPadding (tabs.get(ix++), title) + "Value";
+            title = addTabPadding (tabs.get(ix++), title) + "Start";
+            title = addTabPadding (tabs.get(ix++), title) + "Stop";
+            title = addTabPadding (tabs.get(ix++), title) + "Step";
+            title = addTabPadding (tabs.get(ix++), title) + "Incl";
+            title = addTabPadding (tabs.get(ix++), title) + "Comp";
+        
             printType(MessageType.Title, true, "=== LOOPS ===============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
-            for (int ix = 0; ix < varLoop.size(); ix++) {
-                VarAccess varInfo = varLoop.get(ix);
+            for (int var = 0; var < varLoop.size(); var++) {
+                VarAccess varInfo = varLoop.get(var);
                 String value = varInfo.getValueString();
                 if (value == null || value.isEmpty()) {
                     value = "----";
                 }
+                ix = 0;
                 String line = varInfo.getName();
-                line = addTabPadding (tab1, line) + varInfo.getOwner();
-                line = addTabPadding (tab2, line) + "Integer";
-                line = addTabPadding (tab3, line) + value;
-                line = addTabPadding (tab4, line) + varInfo.getStartValue();
-                line = addTabPadding (tab5, line) + varInfo.getEndValue();
-                line = addTabPadding (tab6, line) + varInfo.getStepValue();
-                line = addTabPadding (tab7, line) + varInfo.getIncl();
-                line = addTabPadding (tab8, line) + varInfo.getCompSign();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getOwner();
+                line = addTabPadding (tabs.get(ix++), line) + "Integer";
+                line = addTabPadding (tabs.get(ix++), line) + value;
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getStartValue();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getEndValue();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getStepValue();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getIncl();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getCompSign();
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {
@@ -204,39 +352,50 @@ public class Variables {
             printlf();
         }
 
-        // update tab stops and title bar for all other parameters
-        tab1 = 25;          // OWNER  offset: handles variable names up to 24 in length
-        tab2 = tab1 + 15;   // TYPE   offset: handles subroutines up to 14 in length
-        tab3 = tab2 + 12;   // WRITER offset: max length of type is 8
-        tab4 = tab3 + 15;   // LINE   offset: handles subroutines up to 14 in length
-        tab5 = tab4 + 8;    // TIME   offset: max line number of 4
-        tab6 = tab5 + 12;   // VALUE offset: time is always 9 chars long:  00:00.000
-        
-        title = "Variable name";
-        title = addTabPadding (tab1, title) + "Owner";
-        title = addTabPadding (tab2, title) + "Data type";
-        title = addTabPadding (tab3, title) + "Writer";
-        title = addTabPadding (tab4, title) + "Line";
-        title = addTabPadding (tab5, title) + "Time";
-        title = addTabPadding (tab6, title) + "Value";
-
         if (! varReserved.isEmpty()) {
+            // update tab stops and title bar for all other parameters
+            sect = "RESERVED";
+            lenName   = getMaxLength (sect, "NAME");
+            lenOwner  = getMaxLength (sect, "OWNER");
+            lenWriter = getMaxLength (sect, "WRITER");
+
+            // set the tab stops for this section
+            tabs.clear();
+            taboff = 0;                                   // VAR NAME
+            taboff += lenName;      tabs.add(taboff);   // OWNER
+            taboff += lenOwner;     tabs.add(taboff);   // TYPE
+            taboff += 12;           tabs.add(taboff);   // WRITER
+            taboff += lenWriter;    tabs.add(taboff);   // LINE
+            taboff += 8;            tabs.add(taboff);   // TIME
+            taboff += 12;           tabs.add(taboff);   // VALUE
+
+            // setup the header for Loops
+            int ix = 0;
+            String title = "Variable";
+            title = addTabPadding (tabs.get(ix++), title) + "Owner";
+            title = addTabPadding (tabs.get(ix++), title) + "Data type";
+            title = addTabPadding (tabs.get(ix++), title) + "Writer";
+            title = addTabPadding (tabs.get(ix++), title) + "Line";
+            title = addTabPadding (tabs.get(ix++), title) + "Time";
+            title = addTabPadding (tabs.get(ix++), title) + "Value";
+        
             printType(MessageType.Title, true, "=== RESERVED ============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
-            for (int ix = 0; ix < varReserved.size(); ix++) {
-                VarAccess varInfo = varReserved.get(ix);
+            for (int var = 0; var < varReserved.size(); var++) {
+                VarAccess varInfo = varReserved.get(var);
                 String value = varInfo.getValueString();
                 if (value == null || value.isEmpty()) {
                     value = "----";
                 }
+                ix = 0;
                 String line = varInfo.getName();
-                line = addTabPadding (tab1, line) + "----";
-                line = addTabPadding (tab2, line) + varInfo.getType().toString();
-                line = addTabPadding (tab3, line) + varInfo.getWriter();
-                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
-                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
-                line = addTabPadding (tab6, line) + value;
+                line = addTabPadding (tabs.get(ix++), line) + "----";
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getType().toString();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriter();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterIndex();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterTime();
+                line = addTabPadding (tabs.get(ix++), line) + value;
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {
@@ -245,23 +404,51 @@ public class Variables {
             }
             printlf();
         }
+
         if (! varGlobal.isEmpty()) {
+            // update tab stops and title bar for all other parameters
+            sect = "GLOBALS";
+            lenName   = getMaxLength (sect, "NAME");
+            lenOwner  = getMaxLength (sect, "OWNER");
+            lenWriter = getMaxLength (sect, "WRITER");
+
+            // set the tab stops for this section
+            tabs.clear();
+            taboff = 0;                                   // VAR NAME
+            taboff += lenName;      tabs.add(taboff);   // OWNER
+            taboff += lenOwner;     tabs.add(taboff);   // TYPE
+            taboff += 12;           tabs.add(taboff);   // WRITER
+            taboff += lenWriter;    tabs.add(taboff);   // LINE
+            taboff += 8;            tabs.add(taboff);   // TIME
+            taboff += 12;           tabs.add(taboff);   // VALUE
+
+            // setup the header for Loops
+            int ix = 0;
+            String title = "Variable";
+            title = addTabPadding (tabs.get(ix++), title) + "Owner";
+            title = addTabPadding (tabs.get(ix++), title) + "Data type";
+            title = addTabPadding (tabs.get(ix++), title) + "Writer";
+            title = addTabPadding (tabs.get(ix++), title) + "Line";
+            title = addTabPadding (tabs.get(ix++), title) + "Time";
+            title = addTabPadding (tabs.get(ix++), title) + "Value";
+        
             printType(MessageType.Title, true, "=== GLOBALS =============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
-            for (int ix = 0; ix < varGlobal.size(); ix++) {
-                VarAccess varInfo = varGlobal.get(ix);
+            for (int var = 0; var < varGlobal.size(); var++) {
+                VarAccess varInfo = varGlobal.get(var);
                 String value = varInfo.getValueString();
                 if (value == null || value.isEmpty()) {
                     value = "----";
                 }
+                ix = 0;
                 String line = varInfo.getName();
-                line = addTabPadding (tab1, line) + varInfo.getOwner();
-                line = addTabPadding (tab2, line) + varInfo.getType().toString();
-                line = addTabPadding (tab3, line) + varInfo.getWriter();
-                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
-                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
-                line = addTabPadding (tab6, line) + value;
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getOwner();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getType().toString();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriter();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterIndex();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterTime();
+                line = addTabPadding (tabs.get(ix++), line) + value;
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {
@@ -270,23 +457,51 @@ public class Variables {
             }
             printlf();
         }
+
         if (! varLocal.isEmpty()) {
+            // update tab stops and title bar for all other parameters
+            sect = "LOCALS";
+            lenName   = getMaxLength (sect, "NAME");
+            lenOwner  = getMaxLength (sect, "OWNER");
+            lenWriter = getMaxLength (sect, "WRITER");
+
+            // set the tab stops for this section
+            tabs.clear();
+            taboff = 0;                                   // VAR NAME
+            taboff += lenName;      tabs.add(taboff);   // OWNER
+            taboff += lenOwner;     tabs.add(taboff);   // TYPE
+            taboff += 12;           tabs.add(taboff);   // WRITER
+            taboff += lenWriter;    tabs.add(taboff);   // LINE
+            taboff += 8;            tabs.add(taboff);   // TIME
+            taboff += 12;           tabs.add(taboff);   // VALUE
+
+            // setup the header for Loops
+            int ix = 0;
+            String title = "Variable";
+            title = addTabPadding (tabs.get(ix++), title) + "Owner";
+            title = addTabPadding (tabs.get(ix++), title) + "Data type";
+            title = addTabPadding (tabs.get(ix++), title) + "Writer";
+            title = addTabPadding (tabs.get(ix++), title) + "Line";
+            title = addTabPadding (tabs.get(ix++), title) + "Time";
+            title = addTabPadding (tabs.get(ix++), title) + "Value";
+        
             printType(MessageType.Title, true, "=== LOCALS ==============================================================================================");
             printType(MessageType.Title, true, title);
             printType(MessageType.Title, true, "_________________________________________________________________________________________________________");
-            for (int ix = 0; ix < varLocal.size(); ix++) {
-                VarAccess varInfo = varLocal.get(ix);
+            for (int var = 0; var < varLocal.size(); var++) {
+                VarAccess varInfo = varLocal.get(var);
                 String value = varInfo.getValueString();
                 if (value == null || value.isEmpty()) {
                     value = "----";
                 }
+                ix = 0;
                 String line = varInfo.getName();
-                line = addTabPadding (tab1, line) + varInfo.getOwner();
-                line = addTabPadding (tab2, line) + varInfo.getType().toString();
-                line = addTabPadding (tab3, line) + varInfo.getWriter();
-                line = addTabPadding (tab4, line) + varInfo.getWriterIndex();
-                line = addTabPadding (tab5, line) + varInfo.getWriterTime();
-                line = addTabPadding (tab6, line) + value;
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getOwner();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getType().toString();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriter();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterIndex();
+                line = addTabPadding (tabs.get(ix++), line) + varInfo.getWriterTime();
+                line = addTabPadding (tabs.get(ix++), line) + value;
                 if (varInfo.isVarChanged()) {
                     printType(MessageType.Changed, true, line);
                 } else {
@@ -315,7 +530,7 @@ public class Variables {
                         section = entry;
                         break;
                     case "START":
-                        resetVariables();
+                        clearVariables();
                         break;
                     case "END":
                         // allocation info complete - now format and print it

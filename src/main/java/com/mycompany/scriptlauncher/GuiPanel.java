@@ -213,6 +213,7 @@ public class GuiPanel {
                         runButton.setText("Run");
                         JButton stepButton = guiControls.getButton("BTN_STEP");
                         stepButton.setEnabled(true);
+                        Variables.resetVariables();
                         sendMessage("RESET");
                         break;
                     default:
@@ -272,7 +273,6 @@ public class GuiPanel {
                     sendMessage("DISCONNECT");
                     pauseButton.setText("Connect");
                 }
-                clearStatusError();
             }
         });
         (guiControls.getButton("BTN_STEP")).addActionListener(new ActionListener() {
