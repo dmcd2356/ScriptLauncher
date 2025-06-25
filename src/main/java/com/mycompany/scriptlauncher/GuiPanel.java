@@ -31,6 +31,9 @@ public class GuiPanel {
     * This class handles creating and updating the Graphical User Interface.
     */
 
+    // the chars used to seperate entries in reporting variable contents to the client
+    public static final String DATA_SEP = "::";
+    
     private final static GuiControls  guiControls = new GuiControls();
     private static PropertiesFile props;
     private static JTabbedPane    tabPanel;
@@ -38,6 +41,7 @@ public class GuiPanel {
     private static JTextPane      scriptPane;
     private static JTextPane      varPane;
     private static JTextPane      outputPane;
+    private static JTextPane      networkPane;
     private static JFileChooser   fileSelector;
     private static TCPClient      tcpClient;
     private static boolean        connected;
@@ -70,6 +74,7 @@ public class GuiPanel {
 
         // these just make the gui entries cleaner
         String panel;
+        JLabel textField;
         GuiControls.Orient LEFT = GuiControls.Orient.LEFT;
         GuiControls.Orient CENTER = GuiControls.Orient.CENTER;
         GuiControls.Orient RIGHT = GuiControls.Orient.RIGHT;
@@ -84,6 +89,7 @@ public class GuiPanel {
         guiControls.makePanel (null, "PNL_BREAKPT"    , "Breakpoints"  , CENTER, false);
         guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT , true);
         guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT  , true);
+        guiControls.makePanel (null, "PNL_SUBSTACK"   , "Sub stack"    , LEFT  , true);
         guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT  , true);
 
         var statPanel = guiControls.getPanel ("PNL_STATUS");
@@ -119,8 +125,12 @@ public class GuiPanel {
         String emptySpace = "                                                                                                                        ";
         guiControls.makeLabel (panel, "LBL_STATUS"   , "" , LEFT , false);
         guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
-        JLabel textField = guiControls.getLabel("LBL_STATUS");
+        textField = guiControls.getLabel("LBL_STATUS");
         textField.setMinimumSize(new Dimension(1200, 25));
+        
+        panel = "PNL_SUBSTACK";
+        guiControls.makeLabel (panel, "LBL_SUBSTACK" , "" , LEFT , false);
+        guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
         
         panel = "PNL_COMMAND";
         guiControls.makeLabel (panel, "LBL_COMMAND"  , "" , LEFT , false);
@@ -145,6 +155,14 @@ public class GuiPanel {
         tabPanel.addTab(title, fileScrollPanel);
         panelId.add(title);
 
+        // add the Network Communication message panel to the tabs
+        title = "User Output";
+        outputPane = new JTextPane();
+        fileScrollPanel = new JScrollPane(outputPane);
+        fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
+        tabPanel.addTab(title, fileScrollPanel);
+        panelId.add(title);
+
         // add the Debug message panel to the tabs
         title = "Debug log";
         debugPane = new JTextPane();
@@ -153,10 +171,10 @@ public class GuiPanel {
         tabPanel.addTab(title, fileScrollPanel);
         panelId.add(title);
 
-        // add the Output message panel to the tabs
-        title = "Output";
-        outputPane = new JTextPane();
-        fileScrollPanel = new JScrollPane(outputPane);
+        // add the Network Communication message panel to the tabs
+        title = "Network Comm";
+        networkPane = new JTextPane();
+        fileScrollPanel = new JScrollPane(networkPane);
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
         tabPanel.addTab(title, fileScrollPanel);
         panelId.add(title);
@@ -177,7 +195,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_LOAD")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                Output.print("STATUS: LOAD button pressed");
+                NetComm.print("STATUS: LOAD button pressed");
                 loadScriptButtonActionPerformed(evt);
                 clearStatusError();
             }
@@ -185,7 +203,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_COMPILE")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                Output.print("STATUS: COMPILE button pressed");
+                NetComm.print("STATUS: COMPILE button pressed");
                 sendMessage("COMPILE");
                 clearStatusError();
             }
@@ -197,19 +215,22 @@ public class GuiPanel {
                 String curButton = runButton.getText();
                 switch (curButton) {
                     case "Run":
-                        Output.print("STATUS: RUN button pressed");
+                        NetComm.print("STATUS: RUN button pressed");
                         Variables.resetChanged();
                         runButton.setText("Stop");
                         sendMessage("RUN");
                         break;
                     case "Stop":
-                        Output.print("STATUS: STOP button pressed");
-                        runButton.setText("Run");
+                        NetComm.print("STATUS: STOP button pressed");
+                        runButton.setText("Reset");
+                        disableButton("BTN_STEP");
+                        disableButton("BTN_PAUSE");
+                        setButtonText("BTN_PAUSE", "Pause");
                         sendMessage("STOP");
                         break;
                     case "Reset":
                         // TODO: set highlighted line to line 1
-                        Output.print("STATUS: RESET button pressed");
+                        NetComm.print("STATUS: RESET button pressed");
                         runButton.setText("Run");
                         JButton stepButton = guiControls.getButton("BTN_STEP");
                         stepButton.setEnabled(true);
@@ -227,11 +248,11 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton pauseButton = guiControls.getButton("BTN_PAUSE");
                 if (pauseButton.getText().equals("Pause")) {
-                    Output.print("STATUS: PAUSE button pressed");
+                    NetComm.print("STATUS: PAUSE button pressed");
                     pauseButton.setText("Resume");
                     sendMessage("PAUSE");
                 } else {
-                    Output.print("STATUS: RESUME button pressed");
+                    NetComm.print("STATUS: RESUME button pressed");
                     Variables.resetChanged();
                     pauseButton.setText("Pause");
                     sendMessage("RESUME");
@@ -244,7 +265,7 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 JButton pauseButton = guiControls.getButton("BTN_CONNECT");
                 if (pauseButton.getText().equals("Connect")) {
-                    Output.print("STATUS: CONNECT button pressed");
+                    NetComm.print("STATUS: CONNECT button pressed");
                     JTextField portField = guiControls.getTextField ("TXT_PORT");
                     String strPort = portField.getText();
                     try {
@@ -269,7 +290,7 @@ public class GuiPanel {
                     }
                     pauseButton.setText("Disconnect");
                 } else {
-                    Output.print("STATUS: DISCONNECT button pressed");
+                    NetComm.print("STATUS: DISCONNECT button pressed");
                     sendMessage("DISCONNECT");
                     pauseButton.setText("Connect");
                 }
@@ -278,7 +299,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_STEP")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                Output.print("STATUS: STEP button pressed");
+                NetComm.print("STATUS: STEP button pressed");
                 Variables.resetChanged();
                 sendMessage("STEP");
                 clearStatusError();
@@ -299,7 +320,7 @@ public class GuiPanel {
         (guiControls.getButton("BTN_EXIT")).addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                Output.print("STATUS: EXIT button pressed");
+                NetComm.print("STATUS: EXIT button pressed");
                 sendMessage("EXIT");
                 clearStatusError();
             }
@@ -310,6 +331,7 @@ public class GuiPanel {
 
         // now init the debug message handler and the script file handler
         Logger.init(debugPane);
+        NetComm.init(networkPane);
         Output.init(outputPane);
         Script.init(scriptPane);
         Variables.init(varPane);
@@ -413,7 +435,7 @@ public class GuiPanel {
             Integer.valueOf(strLine);
         } catch (NumberFormatException exMsg) {
             breakLine.setText("");
-            Output.print("ERROR: Invalid breakpoint entry: " + strLine);
+            NetComm.print("ERROR: Invalid breakpoint entry: " + strLine);
             return;
         }
 
@@ -421,7 +443,7 @@ public class GuiPanel {
         breakLabel.setText("ON");
         breakLine.setEnabled(false);
 
-        Output.print("STATUS: BREAKPT ON button pressed: line " + strLine);
+        NetComm.print("STATUS: BREAKPT ON button pressed: line " + strLine);
         sendMessage("BREAKPT " + strLine);
     }
     
@@ -435,7 +457,7 @@ public class GuiPanel {
         breakLine.setText("");
         breakLine.setEnabled(true);
 
-        Output.print("STATUS: BREAKPT OFF button pressed");
+        NetComm.print("STATUS: BREAKPT OFF button pressed");
         sendMessage("BREAKPT OFF");
     }
     
@@ -443,7 +465,7 @@ public class GuiPanel {
         String name = "LBL_STATUS";
         JLabel label = guiControls.getLabel(name);
         if (label == null) {
-            Output.print("ERROR: GUI: Invalid label name: " + name);
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
         } else {
             label.setText("");
         }
@@ -453,12 +475,12 @@ public class GuiPanel {
         String name = "LBL_STATUS";
         JLabel label = guiControls.getLabel(name);
         if (label == null) {
-            Output.print("ERROR: GUI: Invalid label name: " + name);
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
         } else {
             label.setForeground(Color.black);
             label.setText(text);
         }
-        Output.print("STATUS: " + text);
+        NetComm.print("STATUS: " + text);
     }
     
     public static void setStatusError (String text) {
@@ -466,19 +488,19 @@ public class GuiPanel {
         text = "ERROR: " + text;
         JLabel label = guiControls.getLabel(name);
         if (label == null) {
-            Output.print("ERROR: GUI: Invalid label name: " + name);
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
         } else {
             label.setForeground(Color.red);
             label.setText(text);
         }
-        Output.print(text);
+        NetComm.print(text);
     }
     
     public static void clearCommandLine () {
         String name = "LBL_COMMAND";
         JLabel label = guiControls.getLabel(name);
         if (label == null) {
-            Output.print("ERROR: GUI: Invalid label name: " + name);
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
         } else {
             label.setText("");
         }
@@ -488,10 +510,43 @@ public class GuiPanel {
         String name = "LBL_COMMAND";
         JLabel label = guiControls.getLabel(name);
         if (label == null) {
-            Output.print("ERROR: GUI: Invalid label name: " + name);
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
         } else {
             label.setForeground(Color.black);
             label.setText(text);
+        }
+    }
+    
+    public static void clearSubStack () {
+        String name = "LBL_SUBSTACK";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
+        }
+    }
+    
+    public static void setSubStack (String text) {
+        String name = "LBL_SUBSTACK";
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + text);
+        } else {
+            label.setForeground(Color.black);
+            var array = new ArrayList<String>(Arrays.asList(text.split(DATA_SEP)));
+            if (array.size() == 1) {
+                label.setText(text);
+            } else {
+                String response = array.getFirst();
+                for (int ix = 1; ix < array.size(); ix++) {
+                    response += " -> " + array.get(ix);
+                }
+                label.setText(response);
+            }
         }
     }
     
@@ -500,7 +555,7 @@ public class GuiPanel {
         if (! text.isEmpty()) {
             JTextField textField = guiControls.getTextField(name);
             if (textField == null) {
-                Output.print("ERROR: GUI: Invalid textField name: " + name);
+                NetComm.print("ERROR: GUI: Invalid textField name: " + name);
             } else {
                 textField.setForeground(Color.black);
                 textField.setText(text);
@@ -537,6 +592,7 @@ public class GuiPanel {
                 disableButton("BTN_EXIT");
                 breakpointEnable(false);
                 clearCommandLine();
+                clearSubStack();
                 break;
             case "CONNECTED":
                 connected = true;
@@ -553,6 +609,7 @@ public class GuiPanel {
                 setLabelText ("LBL_LOAD", "");
                 clearStatusError ();
                 clearCommandLine();
+                clearSubStack();
                 break;
             case "DISCONNECTED":
                 connected = false;
@@ -567,6 +624,8 @@ public class GuiPanel {
                 breakpointEnable(false);
                 setButtonText("BTN_CONNECT", "Connect");
                 setLabelText ("LBL_LOAD", "");
+                clearCommandLine();
+                clearSubStack();
                 break;
             case "LOADED":
                 procState = ProcState.LOADED;
@@ -577,6 +636,7 @@ public class GuiPanel {
                 breakpointEnable(false);
                 updateStateLabel (state);
                 clearCommandLine();
+                clearSubStack();
                 break;
             case "COMPILED":
                 procState = ProcState.COMPILED;
@@ -586,6 +646,7 @@ public class GuiPanel {
                 breakpointEnable(true);
                 setButtonText("BTN_RUN", "Run");
                 clearCommandLine();
+                clearSubStack();
                 break;
             case "EOF":
             case "STOPPED":
@@ -597,6 +658,8 @@ public class GuiPanel {
                 disableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Pause");
                 setButtonText("BTN_RUN", "Reset");
+                clearCommandLine();
+                clearSubStack();
                 break;
             case "PAUSED":
             case "STEPPED":
@@ -642,16 +705,16 @@ public class GuiPanel {
         if (tcpClient == null || !connected) {
             setStatusError("Send to SERVER when Server not connected: " + message);
         } else {
-            Output.print("CLIENT: Send to SERVER: " + message);
+            NetComm.print("CLIENT: Send to SERVER: " + message);
             tcpClient.sendMessage(message);
         }
     }
     
     private static void loadScriptButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        String defaultName = "program";
+//        String defaultName = "program";
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Script Files", "scr");
         fileSelector.setFileFilter(filter);
-        fileSelector.setSelectedFile(new File(defaultName + ".scr"));
+//        fileSelector.setSelectedFile(new File(defaultName + ".scr"));
         fileSelector.setMultiSelectionEnabled(false);
         fileSelector.setApproveButtonText("Load");
         int retVal = fileSelector.showOpenDialog(guiControls.getFrame());
@@ -712,12 +775,16 @@ public class GuiPanel {
         }
         // output all server messages that do not go to the Debug log window to the Output window.
         if (! command.contentEquals("LOGMSG:")) {
-            Output.print("SERVER: " + message);
+            NetComm.print("SERVER: " + message);
         }
         
         switch (command) {
             case "STATUS:":
                 setState(msgDisplay.substring(8));
+                break;
+            case "SUBSTACK:":
+                message = message.substring(command.length()).strip();
+                setSubStack(message);
                 break;
             case "LINE:":
                 if (words.size() < 2) {
@@ -738,6 +805,8 @@ public class GuiPanel {
                 } else {
                     String line = Script.getLine(lineNum);
                     setCommandLine(line);
+                    Script.setCurrentLine(lineNum);
+                    Script.refresh();
                 }
                 break;
             case "LOGMSG:":
@@ -759,8 +828,12 @@ public class GuiPanel {
                 message = message.substring(8);
                 Variables.allocationMessage(message);
                 break;
+            case "OUTPUT:":
+                message = message.substring(command.length()).strip();
+                Output.print(message);
+                break;
             default:
-                Output.print("ERROR: GuiPanel.processMessage: Invalid command: " + message);
+                NetComm.print("ERROR: GuiPanel.processMessage: Invalid command: " + message);
                 break;
         }
     }

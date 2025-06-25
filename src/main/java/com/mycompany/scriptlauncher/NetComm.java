@@ -12,14 +12,14 @@ import javax.swing.JTextPane;
  *
  * @author dan
  */
-public class Output {
+public class NetComm {
     
     /*
     * This class handles receiving the Log messages from the network and displaying
     *  the contents on the Log Pane.
     */
     
-    private static final int    FONT_SIZE = 14;
+    private static final int    FONT_SIZE = 11;
     private static final String FONT_TYPE = "Courier";
     
     private static JTextPane textPane = null;

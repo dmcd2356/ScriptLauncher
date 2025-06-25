@@ -67,7 +67,7 @@ public class PropertiesFile {
             }
 
             // now save properties file
-            Output.print("STATUS: Creating new empty site.properties file.");
+            NetComm.print("STATUS: Creating new empty site.properties file.");
             File file = new File(PROPERTIES_PATH + PROPERTIES_FILE);
             try (FileOutputStream fileOut = new FileOutputStream(file)) {
                 props.store(fileOut, "Initialization");
@@ -111,7 +111,7 @@ public class PropertiesFile {
                     old_value = "";
                 }
                 if (!old_value.equals(value)) {
-                    Output.print("STATUS: site.properties <" + tag + "> set to " + value);
+                    NetComm.print("STATUS: site.properties <" + tag + "> set to " + value);
                 }
                 props.setProperty(tag, value);
                 FileOutputStream out = new FileOutputStream(PROPERTIES_PATH + PROPERTIES_FILE);

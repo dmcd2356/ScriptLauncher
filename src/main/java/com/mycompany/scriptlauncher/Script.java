@@ -24,13 +24,18 @@ public class Script {
     *  the contents on the Script Pane.
     */
     
+    private static final int    FONT_SIZE = 14;
+    private static final String FONT_TYPE = "Courier";
+    
     private static JTextPane textPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
+    private static Integer curLine = -1;
 
     private static ArrayList<String> scriptFile = new ArrayList<>();
     
     private enum MessageType {
         Prefix,         // the line counter value
+        Highlight,      // the line counter for the current line selection
         Comment,        // a comment line
         Command,        // a command (part of a line)
         CmdOption,      // a command option (part of a line)
@@ -78,6 +83,18 @@ public class Script {
             line = scriptFile.get(lineNum - 1);
         }
         return lineNum + ": " + line;
+    }
+
+    public static void setCurrentLine (Integer line) {
+        curLine = line;
+    }
+    
+    // re-draws the screen
+    public static void refresh() {
+        clear();
+        for (int ix = 0; ix < scriptFile.size(); ix++) {
+            print(ix + 1, scriptFile.get(ix));
+        }
     }
     
     /**
@@ -139,7 +156,7 @@ public class Script {
         }
         return word;
     }
-    
+
     /**
      * outputs the various types of messages to the Script display.
      * 
@@ -155,7 +172,11 @@ public class Script {
             String msgClone = message.strip();
             
             // font settings for timestamp and data type
-            printType (MessageType.Prefix, msgClone.isEmpty(), countstr + "   ");
+            MessageType prefix = MessageType.Prefix;
+            if (linenum == curLine) {
+                prefix = MessageType.Highlight;
+            }
+            printType (prefix, msgClone.isEmpty(), countstr + "   ");
 
             // get 1st non-space char
             if (msgClone.startsWith("#")) {
@@ -195,7 +216,7 @@ public class Script {
         FontInfo fontInfo = fontInfoTbl.get(type);
         if (fontInfo == null) {
             fontInfo = new FontInfo(FontInfo.TextColor.Black,
-                                   FontInfo.FontType.Normal, 11, "Courier");
+                                   FontInfo.FontType.Normal, FONT_SIZE, FONT_TYPE);
         }
 
         TextWriter.print(textPane, term, fontInfo, message);
@@ -205,6 +226,7 @@ public class Script {
         if (textPane != null) {
             // these are for public consumption
             setTypeColor (MessageType.Prefix   , FontInfo.TextColor.Black , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Highlight, FontInfo.TextColor.Blue  , FontInfo.FontType.Bold);
             setTypeColor (MessageType.Comment  , FontInfo.TextColor.Green , FontInfo.FontType.Italic);
             setTypeColor (MessageType.Command  , FontInfo.TextColor.Red   , FontInfo.FontType.Normal);
             setTypeColor (MessageType.CmdOption, FontInfo.TextColor.Orange, FontInfo.FontType.Normal);
@@ -223,9 +245,7 @@ public class Script {
      * @param ftype - the font attributes to associate with the type
      */
     private static void setTypeColor (MessageType type, FontInfo.TextColor color, FontInfo.FontType ftype) {
-        int size = 11;
-        String font = "Courier";
-        FontInfo fontinfo = new FontInfo(color, ftype, size, font);
+        FontInfo fontinfo = new FontInfo(color, ftype, FONT_SIZE, FONT_TYPE);
         if (fontInfoTbl.containsKey(type)) {
             fontInfoTbl.replace(type, fontinfo);
         }

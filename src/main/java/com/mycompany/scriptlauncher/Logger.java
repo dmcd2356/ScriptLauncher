@@ -19,6 +19,9 @@ public class Logger {
     *  the contents on the Log Pane.
     */
     
+    private static final int    FONT_SIZE = 11;
+    private static final String FONT_TYPE = "Courier";
+    
     private static JTextPane textPane = null;
     private static final HashMap<String, FontInfo> fontInfoTbl = new HashMap<>();
 
@@ -77,7 +80,7 @@ public class Logger {
             
             // font settings for timestamp and data type
             FontInfo prefixFont = new FontInfo(FontInfo.TextColor.Black,
-                                              FontInfo.FontType.Normal, 11, "Courier");
+                                              FontInfo.FontType.Normal, FONT_SIZE, FONT_TYPE);
             FontInfo msgFont = fontInfoTbl.get(typestr);
 
             TextWriter.print(textPane, false, prefixFont, countstr + " ");
@@ -111,9 +114,7 @@ public class Logger {
      * @param ftype - the font attributes to associate with the type
      */
     private static void setTypeColor (String type, FontInfo.TextColor color, FontInfo.FontType ftype) {
-        int size = 11;
-        String font = "Courier";
-        FontInfo fontinfo = new FontInfo(color, ftype, size, font);
+        FontInfo fontinfo = new FontInfo(color, ftype, FONT_SIZE, FONT_TYPE);
         if (fontInfoTbl.containsKey(type)) {
             fontInfoTbl.replace(type, fontinfo);
         }

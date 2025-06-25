@@ -37,7 +37,7 @@ public class FileSaver extends Thread {
 
         // setup the file to save the data in
         setFile(fname);
-        Output.print("STATUS: FileSaver: started");
+        NetComm.print("STATUS: FileSaver: started");
     }
     
     @Override
@@ -54,7 +54,7 @@ public class FileSaver extends Thread {
                     writer.flush();
                 } catch (InterruptedException ex) {
                     GuiPanel.setStatusError ("FileSaver: InterruptedException");
-                    Output.print("ERROR: FileSaver: " + ex.getMessage());
+                    NetComm.print("ERROR: FileSaver: " + ex.getMessage());
                 }
             }
         }
@@ -62,7 +62,7 @@ public class FileSaver extends Thread {
 
     public void exit() {
         if (writer != null) {
-            Output.print("STATUS: FileSaver: closing");
+            NetComm.print("STATUS: FileSaver: closing");
             writer.close();
         }
     }
@@ -73,7 +73,7 @@ public class FileSaver extends Thread {
             try {
                 message = reader.readLine();
             } catch (IOException ex) {
-                Output.print("ERROR: getNextMessage: " + ex.getMessage());
+                NetComm.print("ERROR: getNextMessage: " + ex.getMessage());
             }
         }
 
@@ -96,12 +96,12 @@ public class FileSaver extends Thread {
             // close any current writer
             reader = null;
             if (writer != null) {
-                Output.print("STATUS: FileSaver: closing writer");
+                NetComm.print("STATUS: FileSaver: closing writer");
                 writer.close();
             }
 
             // set the buffer file to use for capturing input
-            Output.print("STATUS: FileSaver: writing to " + fname);
+            NetComm.print("STATUS: FileSaver: writing to " + fname);
             writer = new PrintWriter(new FileWriter(fname, true));
 
             // output time log started
@@ -111,10 +111,10 @@ public class FileSaver extends Thread {
 
             // attach new file reader for output to gui
             reader = new BufferedReader(new FileReader(new File(fname)));
-            Output.print("STATUS: FileSaver: reader status: " + reader.ready());
+            NetComm.print("STATUS: FileSaver: reader status: " + reader.ready());
 
         } catch (IOException ex) {  // includes FileNotFoundException
-            Output.print("ERROR: " + ex.getMessage());
+            NetComm.print("ERROR: " + ex.getMessage());
         }
     }
 

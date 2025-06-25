@@ -20,8 +20,8 @@ public class Variables {
     *  definitions and the contents) and displaying the these entries on the Variables Pane.
     */
     
-    // the chars used to seperate entries in reporting variable contents to the client
-    private static final String DATA_SEP = "::";
+    private static final int    FONT_SIZE = 14;
+    private static final String FONT_TYPE = "Courier";
     
     private static JTextPane textPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
@@ -102,34 +102,6 @@ public class Variables {
                 textPane.update(graphics);
             }
         }
-    }
-
-    /**
-     * extracts the next word in a string.
-     * (includes any preceding space chars)
-     * 
-     * @param message - the message to parse
-     * 
-     * @return the next word from the string
-     */
-    private static String getNextWord (String message) {
-        String word = "";
-        int ix = 0;
-        for(; ix < message.length(); ix++) {
-            if (message.charAt(ix) == ' ') {
-                word = word + " ";
-            } else {
-                break;
-            }
-        }
-        for(; ix < message.length(); ix++) {
-            if (message.charAt(ix) != ' ') {
-                word = word + message.charAt(ix);
-            } else {
-                break;
-            }
-        }
-        return word;
     }
 
     private static String addTabPadding (int tab, String line) {
@@ -544,7 +516,7 @@ public class Variables {
                 return;
             } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
                 message = message.substring(1, message.length()-1);
-                var array = new ArrayList<String>(Arrays.asList(message.split(DATA_SEP)));
+                var array = new ArrayList<String>(Arrays.asList(message.split(GuiPanel.DATA_SEP)));
                 allocationEntryMsg (array);
                 return;
             }
@@ -733,7 +705,7 @@ public class Variables {
         FontInfo fontInfo = fontInfoTbl.get(type);
         if (fontInfo == null) {
             fontInfo = new FontInfo(FontInfo.TextColor.Black,
-                                   FontInfo.FontType.Normal, 14, "Courier");
+                                   FontInfo.FontType.Normal, FONT_SIZE, FONT_TYPE);
         }
 
         TextWriter.print(textPane, term, fontInfo, message);
@@ -760,9 +732,7 @@ public class Variables {
      * @param ftype - the font attributes to associate with the type
      */
     private static void setTypeColor (MessageType type, FontInfo.TextColor color, FontInfo.FontType ftype) {
-        int size = 14;
-        String font = "Courier";
-        FontInfo fontinfo = new FontInfo(color, ftype, size, font);
+        FontInfo fontinfo = new FontInfo(color, ftype, FONT_SIZE, FONT_TYPE);
         if (fontInfoTbl.containsKey(type)) {
             fontInfoTbl.replace(type, fontinfo);
         }
