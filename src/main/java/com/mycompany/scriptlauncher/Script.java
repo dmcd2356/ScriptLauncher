@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 
 /**
@@ -27,15 +28,19 @@ public class Script {
     private static final int    FONT_SIZE = 14;
     private static final String FONT_TYPE = "Courier";
     
-    private static JTextPane textPane = null;
+    private static JTextPane   textPane = null;
+    private static JScrollPane scrollPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
-    private static Integer curLine = -1;
+    private static Integer curLine = -1;        // current line to execute
+    private static Integer breakptLine = -1;    // breakpoint line
 
     private static ArrayList<String> scriptFile = new ArrayList<>();
     
     private enum MessageType {
         Prefix,         // the line counter value
-        Highlight,      // the line counter for the current line selection
+        CurLine,        // the line of the current line selection
+        BreakLine,      // the line of the breakpoint selection
+        BreakReached,   // the line of the breakpoint selection when equal to current line
         Comment,        // a comment line
         Command,        // a command (part of a line)
         CmdOption,      // a command option (part of a line)
@@ -48,10 +53,12 @@ public class Script {
     /**
      * initializes the pane info
      * 
-     * @param textpane - the pane to initialize for writing
+     * @param textpane   - the pane to initialize for writing
+     * @param scrollpane - the scroll pane it is embedded in
      */
-    public static void init (JTextPane textpane) {
+    public static void init (JTextPane textpane, JScrollPane scrollpane) {
         textPane = textpane;
+        scrollPane = scrollpane;
         setColors();
     }
     
@@ -89,11 +96,22 @@ public class Script {
         curLine = line;
     }
     
+    public static void setBreakpointLine (Integer line) {
+        breakptLine = line;
+    }
+    
     // re-draws the screen
     public static void refresh() {
-        clear();
-        for (int ix = 0; ix < scriptFile.size(); ix++) {
-            print(ix + 1, scriptFile.get(ix));
+        if (textPane != null && scrollPane != null) {
+            clear();
+            for (int ix = 0; ix < scriptFile.size(); ix++) {
+                print(ix + 1, scriptFile.get(ix));
+            }
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                public void run() { 
+                    scrollPane.getVerticalScrollBar().setValue(0);
+                }
+            });
         }
     }
     
@@ -171,10 +189,17 @@ public class Script {
             MessageType curType;
             String msgClone = message.strip();
             
-            // font settings for timestamp and data type
+            // font settings for line number
+            // set special characteristics for current line and breakpoint line
             MessageType prefix = MessageType.Prefix;
             if (linenum == curLine) {
-                prefix = MessageType.Highlight;
+                if (linenum == breakptLine) {
+                    prefix = MessageType.BreakReached;
+                } else {
+                    prefix = MessageType.CurLine;
+                }
+            } else if (linenum == breakptLine) {
+                prefix = MessageType.BreakLine;
             }
             printType (prefix, msgClone.isEmpty(), countstr + "   ");
 
@@ -225,15 +250,17 @@ public class Script {
     private static void setColors () {
         if (textPane != null) {
             // these are for public consumption
-            setTypeColor (MessageType.Prefix   , FontInfo.TextColor.Black , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Highlight, FontInfo.TextColor.Blue  , FontInfo.FontType.Bold);
-            setTypeColor (MessageType.Comment  , FontInfo.TextColor.Green , FontInfo.FontType.Italic);
-            setTypeColor (MessageType.Command  , FontInfo.TextColor.Red   , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.CmdOption, FontInfo.TextColor.Orange, FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Reference, FontInfo.TextColor.Violet, FontInfo.FontType.Italic);
-            setTypeColor (MessageType.Numeric  , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Quoted   , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
-            setTypeColor (MessageType.Normal   , FontInfo.TextColor.Brown , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Prefix      , FontInfo.TextColor.Black , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.CurLine     , FontInfo.TextColor.Blue  , FontInfo.FontType.Bold);
+            setTypeColor (MessageType.BreakLine   , FontInfo.TextColor.Red   , FontInfo.FontType.Bold);
+            setTypeColor (MessageType.BreakReached, FontInfo.TextColor.Violet, FontInfo.FontType.Bold);
+            setTypeColor (MessageType.Comment     , FontInfo.TextColor.Green , FontInfo.FontType.Italic);
+            setTypeColor (MessageType.Command     , FontInfo.TextColor.Red   , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.CmdOption   , FontInfo.TextColor.Orange, FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Reference   , FontInfo.TextColor.Violet, FontInfo.FontType.Italic);
+            setTypeColor (MessageType.Numeric     , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Quoted      , FontInfo.TextColor.Blue  , FontInfo.FontType.Normal);
+            setTypeColor (MessageType.Normal      , FontInfo.TextColor.Brown , FontInfo.FontType.Normal);
         }
     }
   

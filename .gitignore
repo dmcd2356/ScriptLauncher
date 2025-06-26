@@ -2,3 +2,5 @@
 .scriptlauncher/
 target/
 
+
+*.png

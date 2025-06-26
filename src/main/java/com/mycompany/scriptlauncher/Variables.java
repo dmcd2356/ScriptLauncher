@@ -8,6 +8,7 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 
 /**
@@ -24,6 +25,7 @@ public class Variables {
     private static final String FONT_TYPE = "Courier";
     
     private static JTextPane textPane = null;
+    private static JScrollPane scrollPane = null;
     private static final HashMap<MessageType, FontInfo> fontInfoTbl = new HashMap<>();
     private static String section = null;
 
@@ -42,13 +44,15 @@ public class Variables {
     /**
      * initializes the pane info
      * 
-     * @param textpane - the pane to initialize for writing
+     * @param textpane   - the pane to initialize for writing
+     * @param scrollpane - the scroll pane it is embedded in
      */
-    public static void init (JTextPane textpane) {
+    public static void init (JTextPane textpane, JScrollPane scrollpane) {
         textPane = textpane;
+        scrollPane = scrollpane;
         setColors();
     }
-
+    
     public static void clear () {
         if (textPane != null) {
             textPane.setText("");
@@ -90,28 +94,15 @@ public class Variables {
         
         // re-draw the variables
         print();
-    }
 
-    /**
-     * updates the display immediately
-     */
-    public static final void updateDisplay () {
-        if (textPane != null) {
-            Graphics graphics = textPane.getGraphics();
-            if (graphics != null) {
-                textPane.update(graphics);
-            }
+        // reset to top of list
+        if (textPane != null && scrollPane != null) {
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                public void run() { 
+                    scrollPane.getVerticalScrollBar().setValue(0);
+                }
+            });
         }
-    }
-
-    private static String addTabPadding (int tab, String line) {
-        String padding = "                                        ";
-        if (line.length() >= tab) {
-            return line + " ";
-        }
-        line = line + padding;
-        line = line.substring(0, tab);
-        return line;
     }
 
     /**
@@ -135,8 +126,39 @@ public class Variables {
         
         // re-draw the variables
         print();
+
+        // reset to top of list
+        if (textPane != null && scrollPane != null) {
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                public void run() { 
+                    scrollPane.getVerticalScrollBar().setValue(0);
+                }
+            });
+        }
     }
     
+    /**
+     * updates the display immediately
+     */
+//    public static final void updateDisplay () {
+//        if (textPane != null) {
+//            Graphics graphics = textPane.getGraphics();
+//            if (graphics != null) {
+//                textPane.update(graphics);
+//            }
+//        }
+//    }
+
+    private static String addTabPadding (int tab, String line) {
+        String padding = "                                        ";
+        if (line.length() >= tab) {
+            return line + " ";
+        }
+        line = line + padding;
+        line = line.substring(0, tab);
+        return line;
+    }
+
     /**
      * finds the max string length of string entries in the variables.
      * 

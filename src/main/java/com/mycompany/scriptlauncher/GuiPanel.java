@@ -57,6 +57,14 @@ public class GuiPanel {
         PAUSED,
     }
     
+    private static enum TabSelect {
+        SCRIPT,
+        VARIABLES,
+        OUTPUT,
+        LOGGER,
+        NETCOMM,
+    }
+    
     /**
      * creates a debug panel to display the Logger messages in.
      * 
@@ -139,13 +147,14 @@ public class GuiPanel {
         textField.setMinimumSize(new Dimension(1200, 25));
         
         // add the Script panel to the tabs
-        JScrollPane fileScrollPanel;
+        JScrollPane fileScrollPanel, scriptScrollPanel, varScrollPanel;
         String title = "Script";
         scriptPane = new JTextPane();
         fileScrollPanel = new JScrollPane(scriptPane);
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
         tabPanel.addTab(title, fileScrollPanel);
         panelId.add(title);
+        scriptScrollPanel = fileScrollPanel; // save for later
 
         // add the Variables panel to the tabs
         title = "Variables";
@@ -154,6 +163,7 @@ public class GuiPanel {
         fileScrollPanel.setBorder(BorderFactory.createTitledBorder(""));
         tabPanel.addTab(title, fileScrollPanel);
         panelId.add(title);
+        varScrollPanel = fileScrollPanel; // save for later
 
         // add the Network Communication message panel to the tabs
         title = "User Output";
@@ -218,6 +228,11 @@ public class GuiPanel {
                         NetComm.print("STATUS: RUN button pressed");
                         Variables.resetChanged();
                         runButton.setText("Stop");
+                        disableButton("BTN_STEP");
+                        disableButton("BTN_PAUSE");
+                        disableButton("BTN_LOAD");
+                        disableButton("BTN_COMPILE");
+                        updateStateLabel ("RUNNING...");
                         sendMessage("RUN");
                         break;
                     case "Stop":
@@ -333,8 +348,8 @@ public class GuiPanel {
         Logger.init(debugPane);
         NetComm.init(networkPane);
         Output.init(outputPane);
-        Script.init(scriptPane);
-        Variables.init(varPane);
+        Script.init(scriptPane, scriptScrollPanel);
+        Variables.init(varPane, varScrollPanel);
 
         // check for a properties file
         props = new PropertiesFile();
@@ -358,14 +373,32 @@ public class GuiPanel {
         System.exit(0);
     }
 
-//    public static boolean isScriptTabSelected() {
-//        boolean status = false;
-//        int ix = tabPanel.getSelectedIndex();
-//        if (ix >= 0 && ix < panelId.size()) {
-//            status = panelId.get(ix).contentEquals("Script");
-//        }
-//        return status;
-//    }
+    public static boolean isTabSelected(TabSelect tab) {
+        boolean status = false;
+        int ix = tabPanel.getSelectedIndex();
+        String name = "";
+        switch (tab) {
+            case SCRIPT:
+                name = "Script";
+                break;
+            case VARIABLES:
+                name = "Variables";
+                break;
+            case OUTPUT:
+                name = "User Output";
+                break;
+            case LOGGER:
+                name = "Debug log";
+                break;
+            case NETCOMM:
+                name = "Network Comm";
+                break;
+        }
+        if (ix >= 0 && ix < panelId.size()) {
+            status = panelId.get(ix).contentEquals(name);
+        }
+        return status;
+    }
 
     private static void enableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
@@ -423,6 +456,11 @@ public class GuiPanel {
         breakButton.setText("Enable");
         breakLabel.setText("OFF");
         breakLine.setText("");
+        
+        if (! enable) {
+            Script.setBreakpointLine(-1);
+            Script.refresh();
+        }
     }
     
     private static void breakpointSet () {
@@ -430,14 +468,18 @@ public class GuiPanel {
         JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
         JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
 
+        Integer line;
         String strLine = breakLine.getText();
         try {
-            Integer.valueOf(strLine);
+            line = Integer.valueOf(strLine);
         } catch (NumberFormatException exMsg) {
             breakLine.setText("");
             NetComm.print("ERROR: Invalid breakpoint entry: " + strLine);
             return;
         }
+
+        Script.setBreakpointLine(line);
+        Script.refresh();
 
         breakButton.setText("Disable");
         breakLabel.setText("ON");
@@ -451,6 +493,9 @@ public class GuiPanel {
         JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
         JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
         JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+
+        Script.setBreakpointLine(-1);
+        Script.refresh();
 
         breakButton.setText("Enable");
         breakLabel.setText("OFF");
@@ -637,6 +682,8 @@ public class GuiPanel {
                 updateStateLabel (state);
                 clearCommandLine();
                 clearSubStack();
+                Script.setCurrentLine(-1);
+                breakpointUnset();
                 break;
             case "COMPILED":
                 procState = ProcState.COMPILED;
@@ -658,6 +705,8 @@ public class GuiPanel {
                 disableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Pause");
                 setButtonText("BTN_RUN", "Reset");
+                enableButton("BTN_LOAD");
+                enableButton("BTN_COMPILE");
                 clearCommandLine();
                 clearSubStack();
                 break;
@@ -672,6 +721,8 @@ public class GuiPanel {
                 enableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Resume");
                 setButtonText("BTN_RUN", "Stop");
+                enableButton("BTN_LOAD");
+                enableButton("BTN_COMPILE");
                 break;
             case "RESUMED":
                 procState = ProcState.COMPILED;
