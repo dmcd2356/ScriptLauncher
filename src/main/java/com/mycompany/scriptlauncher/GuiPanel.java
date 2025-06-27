@@ -851,7 +851,7 @@ public class GuiPanel {
                     break;
                 }
                 // TODO: highlight the line number
-                if (lineNum == 9999) {
+                if (lineNum < 0) {
                     setCommandLine("END");
                 } else {
                     String line = Script.getLine(lineNum);
