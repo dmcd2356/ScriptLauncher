@@ -89,6 +89,18 @@ public class Logger {
         }
     }
 
+    /**
+     * outputs an error message to the status display.
+     * 
+     * @param message   - the message contents
+     */
+    public static final void printError(String message) {
+        FontInfo msgFont = new FontInfo(FontInfo.TextColor.Red,
+                                       FontInfo.FontType.Bold, FONT_SIZE, FONT_TYPE);
+        String prefix = "                             ";
+        TextWriter.print(textPane, true, msgFont, prefix + message);
+    }
+    
     private static void setColors () {
         if (textPane != null) {
             // these are for public consumption

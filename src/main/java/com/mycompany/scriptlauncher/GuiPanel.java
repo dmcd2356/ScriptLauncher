@@ -228,23 +228,18 @@ public class GuiPanel {
                         NetComm.print("STATUS: RUN button pressed");
                         Variables.resetChanged();
                         runButton.setText("Stop");
-                        disableButton("BTN_STEP");
-                        disableButton("BTN_PAUSE");
-                        disableButton("BTN_LOAD");
-                        disableButton("BTN_COMPILE");
                         updateStateLabel ("RUNNING...");
+                        procState = ProcState.RUNNING;
                         sendMessage("RUN");
                         break;
                     case "Stop":
                         NetComm.print("STATUS: STOP button pressed");
                         runButton.setText("Reset");
-                        disableButton("BTN_STEP");
-                        disableButton("BTN_PAUSE");
+                        buttonInProcess();  // wait for stop to be acknowledged
                         setButtonText("BTN_PAUSE", "Pause");
                         sendMessage("STOP");
                         break;
                     case "Reset":
-                        // TODO: set highlighted line to line 1
                         NetComm.print("STATUS: RESET button pressed");
                         runButton.setText("Run");
                         JButton stepButton = guiControls.getButton("BTN_STEP");
@@ -265,6 +260,7 @@ public class GuiPanel {
                 if (pauseButton.getText().equals("Pause")) {
                     NetComm.print("STATUS: PAUSE button pressed");
                     pauseButton.setText("Resume");
+                    buttonInProcess();  // wait for pause to be acknowledged
                     sendMessage("PAUSE");
                 } else {
                     NetComm.print("STATUS: RESUME button pressed");
@@ -409,6 +405,24 @@ public class GuiPanel {
         button.setEnabled(true);
     }
 
+    private static void buttonInProcess() {
+        disableButton("BTN_CONNECT");
+        disableButton("BTN_LOAD");
+        disableButton("BTN_COMPILE");
+        disableButton("BTN_RUN");
+        disableButton("BTN_PAUSE");
+        disableButton("BTN_STEP");
+        disableButton("BTN_BREAKPT");
+        disableButton("BTN_EXIT");
+    }
+    
+    private static void buttonComplete() {
+        enableButton("BTN_CONNECT");
+        enableButton("BTN_LOAD");
+        enableButton("BTN_COMPILE");
+        enableButton("BTN_EXIT");
+    }
+    
     private static void disableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
@@ -618,8 +632,8 @@ public class GuiPanel {
             setStatusError("Invalid command sent to SERVER: " + state.substring(9));
             return;
         }
-        if (state.startsWith("ERROR")) {
-            setStatusError(state);
+        if (state.startsWith("ERROR: ")) {
+            setStatusError(state.substring(7));
             state = "EOF";
         }
         
@@ -636,6 +650,8 @@ public class GuiPanel {
                 disableButton("BTN_STEP");
                 disableButton("BTN_EXIT");
                 breakpointEnable(false);
+                setButtonText("BTN_CONNECT", "Connect");
+                setLabelText ("LBL_LOAD", "");
                 clearCommandLine();
                 clearSubStack();
                 break;
@@ -679,11 +695,11 @@ public class GuiPanel {
                 disableButton("BTN_PAUSE");
                 disableButton("BTN_STEP");
                 breakpointEnable(false);
-                updateStateLabel (state);
                 clearCommandLine();
                 clearSubStack();
                 Script.setCurrentLine(-1);
                 breakpointUnset();
+                updateStateLabel (state);
                 break;
             case "COMPILED":
                 procState = ProcState.COMPILED;
@@ -694,6 +710,7 @@ public class GuiPanel {
                 setButtonText("BTN_RUN", "Run");
                 clearCommandLine();
                 clearSubStack();
+                updateStateLabel (state);
                 break;
             case "EOF":
             case "STOPPED":
@@ -705,8 +722,7 @@ public class GuiPanel {
                 disableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Pause");
                 setButtonText("BTN_RUN", "Reset");
-                enableButton("BTN_LOAD");
-                enableButton("BTN_COMPILE");
+                buttonComplete();
                 clearCommandLine();
                 clearSubStack();
                 break;
@@ -721,8 +737,7 @@ public class GuiPanel {
                 enableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Resume");
                 setButtonText("BTN_RUN", "Stop");
-                enableButton("BTN_LOAD");
-                enableButton("BTN_COMPILE");
+                buttonComplete();
                 break;
             case "RESUMED":
                 procState = ProcState.COMPILED;
@@ -737,6 +752,21 @@ public class GuiPanel {
                 break;
             case "BREAKPT INVALID":
                 breakpointUnset();
+                break;
+            case "ERROR":
+                if (procState == ProcState.RUNNING) {
+                    procState = ProcState.COMPILED;
+                    updateStateLabel (state);
+                    Variables.print();
+                    enableButton ("BTN_RUN");
+                    disableButton("BTN_STEP");
+                    disableButton("BTN_PAUSE");
+                    setButtonText("BTN_PAUSE", "Pause");
+                    setButtonText("BTN_RUN", "Run");
+                    buttonComplete();
+                    clearCommandLine();
+                    clearSubStack();
+                }
                 break;
             default:
                 setStatusError("Invalid STATUS command: " + state);
@@ -884,7 +914,7 @@ public class GuiPanel {
                 Output.print(message);
                 break;
             default:
-                NetComm.print("ERROR: GuiPanel.processMessage: Invalid command: " + message);
+                Logger.printError(message);
                 break;
         }
     }
