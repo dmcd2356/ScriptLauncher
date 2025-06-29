@@ -2,5 +2,6 @@
 .scriptlauncher/
 target/
 
+screens/
 
-*.png
+*.odt
