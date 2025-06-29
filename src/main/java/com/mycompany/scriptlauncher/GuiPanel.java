@@ -96,11 +96,11 @@ public class GuiPanel {
         guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT  , false);
         guiControls.makePanel (null, "PNL_BREAKPT"    , "Breakpoints"  , CENTER, false);
         guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT , true);
-        guiControls.makePanel (null, "PNL_STATUS"     , "Status"       , LEFT  , true);
+        guiControls.makePanel (null, "PNL_ERROR"      , "Error msgs"   , LEFT  , true);
         guiControls.makePanel (null, "PNL_SUBSTACK"   , "Sub stack"    , LEFT  , true);
         guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT  , true);
 
-        var statPanel = guiControls.getPanel ("PNL_STATUS");
+        var statPanel = guiControls.getPanel ("PNL_ERROR");
         statPanel.setMinimumSize(new Dimension(1200, 40));
         var ctrlPanel = guiControls.getPanel ("PNL_COMMAND");
         ctrlPanel.setMinimumSize(new Dimension(1200, 40));
@@ -108,7 +108,7 @@ public class GuiPanel {
         panel = "PNL_CONNECT";
         guiControls.makeButton   (panel, "BTN_CONNECT", "Connect"     , LEFT, false);
         guiControls.makeTextField(panel, "TXT_PORT"   , "", LEFT, false, 50, Integer.toString(port), true);
-        guiControls.makeTextField(panel, "TXT_STATE"  , "", LEFT, true , 100, "", false);
+        guiControls.makeTextField(panel, "TXT_STATE"  , "", LEFT, true , 160, "", false);
 
         panel = "PNL_SCRIPT";
         guiControls.makeButton(panel, "BTN_LOAD"      , "Load"        , LEFT, false);
@@ -127,13 +127,14 @@ public class GuiPanel {
         guiControls.makeLabel (panel, "LBL_BREAKPT"  , "OFF"      , LEFT , true);
 
         panel = "PNL_TERMINATE";
+        guiControls.makeButton(panel, "BTN_CLEAR"    , "Clear",     RIGHT, false);
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
 
-        panel = "PNL_STATUS";
+        panel = "PNL_ERROR";
         String emptySpace = "                                                                                                                        ";
-        guiControls.makeLabel (panel, "LBL_STATUS"   , "" , LEFT , false);
+        guiControls.makeLabel (panel, "LBL_ERROR"    , "" , LEFT , false);
         guiControls.makeLabel (panel, ""             , emptySpace , RIGHT, true);
-        textField = guiControls.getLabel("LBL_STATUS");
+        textField = guiControls.getLabel("LBL_ERROR");
         textField.setMinimumSize(new Dimension(1200, 25));
         
         panel = "PNL_SUBSTACK";
@@ -207,7 +208,7 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 NetComm.print("STATUS: LOAD button pressed");
                 loadScriptButtonActionPerformed(evt);
-                clearStatusError();
+                clearErrorStatus();
             }
         });
         (guiControls.getButton("BTN_COMPILE")).addActionListener(new ActionListener() {
@@ -215,7 +216,7 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 NetComm.print("STATUS: COMPILE button pressed");
                 sendMessage("COMPILE");
-                clearStatusError();
+                clearErrorStatus();
             }
         });
         (guiControls.getButton("BTN_RUN")).addActionListener(new ActionListener() {
@@ -250,7 +251,7 @@ public class GuiPanel {
                     default:
                         break;
                 }
-                clearStatusError();
+                clearErrorStatus();
             }
         });
         (guiControls.getButton("BTN_PAUSE")).addActionListener(new ActionListener() {
@@ -268,7 +269,7 @@ public class GuiPanel {
                     pauseButton.setText("Pause");
                     sendMessage("RESUME");
                 }
-                clearStatusError();
+                clearErrorStatus();
             }
         });
         (guiControls.getButton("BTN_CONNECT")).addActionListener(new ActionListener() {
@@ -282,14 +283,14 @@ public class GuiPanel {
                     try {
                         portConnection = Integer.parseInt(strPort);
                     } catch (NumberFormatException exMsg) {
-                        setStatusError ("Invalid port selection: " + strPort);
+                        setErrorStatus ("Invalid port selection: " + strPort);
                         return;
                     }
                     if (portConnection < 100 || portConnection > 65535) {
-                        setStatusError ("Invalid port selection: " + strPort);
+                        setErrorStatus ("Invalid port selection: " + strPort);
                         return;
                     }
-                    setStatusMessage ("Waiting for connection on port " + portConnection + "...");
+                    updateStateLabel ("Waiting for connection");
                     guiControls.update();
 
                     // start the TCP listener thread
@@ -313,7 +314,7 @@ public class GuiPanel {
                 NetComm.print("STATUS: STEP button pressed");
                 Variables.resetChanged();
                 sendMessage("STEP");
-                clearStatusError();
+                clearErrorStatus();
             }
         });
         (guiControls.getButton("BTN_BREAKPT")).addActionListener(new ActionListener() {
@@ -325,7 +326,19 @@ public class GuiPanel {
                 } else {
                     breakpointUnset();
                 }
-                clearStatusError();
+                clearErrorStatus();
+            }
+        });
+        (guiControls.getButton("BTN_CLEAR")).addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                if (isTabSelected(TabSelect.OUTPUT)) {
+                    Output.clear();
+                } else if (isTabSelected(TabSelect.LOGGER)) {
+                    Logger.clear();
+                } else if (isTabSelected(TabSelect.NETCOMM)) {
+                    NetComm.clear();
+                }
             }
         });
         (guiControls.getButton("BTN_EXIT")).addActionListener(new ActionListener() {
@@ -333,7 +346,7 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 NetComm.print("STATUS: EXIT button pressed");
                 sendMessage("EXIT");
-                clearStatusError();
+                clearErrorStatus();
             }
         });
 
@@ -356,7 +369,7 @@ public class GuiPanel {
     }
 
     private static void formWindowClosing(java.awt.event.WindowEvent evt) {
-        if (tcpClient != null)
+        if (tcpClient != null && connected)
         {
             sendMessage("DISCONNECT");
             try {
@@ -369,6 +382,15 @@ public class GuiPanel {
         System.exit(0);
     }
 
+    private static void sendMessage (String message) {
+        if (tcpClient == null || !connected) {
+            setErrorStatus("Send to SERVER when Server not connected: " + message);
+        } else {
+            NetComm.print("CLIENT: Send to SERVER: " + message);
+            tcpClient.sendMessage(message);
+        }
+    }
+    
     public static boolean isTabSelected(TabSelect tab) {
         boolean status = false;
         int ix = tabPanel.getSelectedIndex();
@@ -399,7 +421,7 @@ public class GuiPanel {
     private static void enableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("GUI: Invalid button name: " + buttonName);
+            setErrorStatus("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setEnabled(true);
@@ -426,7 +448,7 @@ public class GuiPanel {
     private static void disableButton (String buttonName) {
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("GUI: Invalid button name: " + buttonName);
+            setErrorStatus("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setEnabled(false);
@@ -438,7 +460,7 @@ public class GuiPanel {
         }
         JButton button = guiControls.getButton(buttonName);
         if (button == null) {
-            setStatusError("GUI: Invalid button name: " + buttonName);
+            setErrorStatus("GUI: Invalid button name: " + buttonName);
             return;
         }
         button.setText(text);
@@ -449,179 +471,16 @@ public class GuiPanel {
             text = "";
         }
         if (labelName == null) {
-            setStatusError("GUI: Null label name");
+            setErrorStatus("GUI: Null label name");
             return;
         }
         JLabel label = guiControls.getLabel(labelName);
         if (label == null) {
-            setStatusError("GUI: Invalid label name: " + labelName);
+            setErrorStatus("GUI: Invalid label name: " + labelName);
             return;
         }
         label.setText(text);
     }
-
-    private static void breakpointEnable (boolean enable) {
-        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
-        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
-        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
-        breakButton.setEnabled(enable);
-        breakLabel.setEnabled(enable);
-        breakLine.setEnabled(enable);
-        breakButton.setText("Enable");
-        breakLabel.setText("OFF");
-        breakLine.setText("");
-        
-        if (! enable) {
-            Script.setBreakpointLine(-1);
-            Script.refresh();
-        }
-    }
-    
-    private static void breakpointSet () {
-        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
-        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
-        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
-
-        Integer line;
-        String strLine = breakLine.getText();
-        try {
-            line = Integer.valueOf(strLine);
-        } catch (NumberFormatException exMsg) {
-            breakLine.setText("");
-            NetComm.print("ERROR: Invalid breakpoint entry: " + strLine);
-            return;
-        }
-
-        Script.setBreakpointLine(line);
-        Script.refresh();
-
-        breakButton.setText("Disable");
-        breakLabel.setText("ON");
-        breakLine.setEnabled(false);
-
-        NetComm.print("STATUS: BREAKPT ON button pressed: line " + strLine);
-        sendMessage("BREAKPT " + strLine);
-    }
-    
-    private static void breakpointUnset () {
-        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
-        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
-        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
-
-        Script.setBreakpointLine(-1);
-        Script.refresh();
-
-        breakButton.setText("Enable");
-        breakLabel.setText("OFF");
-        breakLine.setText("");
-        breakLine.setEnabled(true);
-
-        NetComm.print("STATUS: BREAKPT OFF button pressed");
-        sendMessage("BREAKPT OFF");
-    }
-    
-    public static void clearStatusError () {
-        String name = "LBL_STATUS";
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setText("");
-        }
-    }
-    
-    public static void setStatusMessage (String text) {
-        String name = "LBL_STATUS";
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setForeground(Color.black);
-            label.setText(text);
-        }
-        NetComm.print("STATUS: " + text);
-    }
-    
-    public static void setStatusError (String text) {
-        String name = "LBL_STATUS";
-        text = "ERROR: " + text;
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setForeground(Color.red);
-            label.setText(text);
-        }
-        NetComm.print(text);
-    }
-    
-    public static void clearCommandLine () {
-        String name = "LBL_COMMAND";
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setText("");
-        }
-    }
-    
-    public static void setCommandLine (String text) {
-        String name = "LBL_COMMAND";
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setForeground(Color.black);
-            label.setText(text);
-        }
-    }
-    
-    public static void clearSubStack () {
-        String name = "LBL_SUBSTACK";
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + name);
-        } else {
-            label.setText("");
-        }
-    }
-    
-    public static void setSubStack (String text) {
-        String name = "LBL_SUBSTACK";
-        if (text == null || text.isEmpty()) {
-            return;
-        }
-        JLabel label = guiControls.getLabel(name);
-        if (label == null) {
-            NetComm.print("ERROR: GUI: Invalid label name: " + text);
-        } else {
-            label.setForeground(Color.black);
-            var array = new ArrayList<String>(Arrays.asList(text.split(DATA_SEP)));
-            if (array.size() == 1) {
-                label.setText(text);
-            } else {
-                String response = array.getFirst();
-                for (int ix = 1; ix < array.size(); ix++) {
-                    response += " -> " + array.get(ix);
-                }
-                label.setText(response);
-            }
-        }
-    }
-    
-    private static void updateStateLabel (String text) {
-        String name = "TXT_STATE";
-        if (! text.isEmpty()) {
-            JTextField textField = guiControls.getTextField(name);
-            if (textField == null) {
-                NetComm.print("ERROR: GUI: Invalid textField name: " + name);
-            } else {
-                textField.setForeground(Color.black);
-                textField.setText(text);
-            }
-        }
-    }
-    
     private static void setState (String state) {
         if (state == null || state.isBlank()) {
             return;
@@ -629,11 +488,11 @@ public class GuiPanel {
 
         // check for special error cases
         if (state.startsWith("UNKNOWN: ")) {
-            setStatusError("Invalid command sent to SERVER: " + state.substring(9));
+            setErrorStatus("Invalid command sent to SERVER: " + state.substring(9));
             return;
         }
         if (state.startsWith("ERROR: ")) {
-            setStatusError(state.substring(7));
+            setErrorStatus(state.substring(7));
             state = "EOF";
         }
         
@@ -668,7 +527,7 @@ public class GuiPanel {
                 breakpointEnable(false);
                 setButtonText("BTN_CONNECT", "Disconnect");
                 setLabelText ("LBL_LOAD", "");
-                clearStatusError ();
+                clearErrorStatus ();
                 clearCommandLine();
                 clearSubStack();
                 break;
@@ -769,25 +628,8 @@ public class GuiPanel {
                 }
                 break;
             default:
-                setStatusError("Invalid STATUS command: " + state);
+                setErrorStatus("Invalid STATUS command: " + state);
                 break;
-        }
-    }
-    
-    public static void serverConnected() {
-        setState ("CONNECTED");
-    }
-
-    public static void serverDisconnected() {
-        setState ("DISCONNECTED");
-    }
-
-    private static void sendMessage (String message) {
-        if (tcpClient == null || !connected) {
-            setStatusError("Send to SERVER when Server not connected: " + message);
-        } else {
-            NetComm.print("CLIENT: Send to SERVER: " + message);
-            tcpClient.sendMessage(message);
         }
     }
     
@@ -841,6 +683,165 @@ public class GuiPanel {
 //        }
 //    }
   
+
+    private static void breakpointEnable (boolean enable) {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+        breakButton.setEnabled(enable);
+        breakLabel.setEnabled(enable);
+        breakLine.setEnabled(enable);
+        breakButton.setText("Enable");
+        breakLabel.setText("OFF");
+        breakLine.setText("");
+        
+        if (! enable) {
+            Script.setBreakpointLine(-1);
+            Script.refresh();
+        }
+    }
+    
+    private static void breakpointSet () {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+
+        Integer line;
+        String strLine = breakLine.getText();
+        try {
+            line = Integer.valueOf(strLine);
+        } catch (NumberFormatException exMsg) {
+            breakLine.setText("");
+            NetComm.print("ERROR: Invalid breakpoint entry: " + strLine);
+            return;
+        }
+
+        Script.setBreakpointLine(line);
+        Script.refresh();
+
+        breakButton.setText("Disable");
+        breakLabel.setText("ON");
+        breakLine.setEnabled(false);
+
+        NetComm.print("STATUS: BREAKPT ON button pressed: line " + strLine);
+        sendMessage("BREAKPT " + strLine);
+    }
+    
+    private static void breakpointUnset () {
+        JButton    breakButton = guiControls.getButton("BTN_BREAKPT");
+        JLabel     breakLabel  = guiControls.getLabel("LBL_BREAKPT");
+        JTextField breakLine   = guiControls.getTextField("TXT_BREAKPT");
+
+        Script.setBreakpointLine(-1);
+        Script.refresh();
+
+        breakButton.setText("Enable");
+        breakLabel.setText("OFF");
+        breakLine.setText("");
+        breakLine.setEnabled(true);
+
+        NetComm.print("STATUS: BREAKPT OFF button pressed");
+        sendMessage("BREAKPT OFF");
+    }
+    
+    private static void clearCommandLine () {
+        String name = "LBL_COMMAND";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
+        }
+    }
+    
+    private static void setCommandLine (String text) {
+        String name = "LBL_COMMAND";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setForeground(Color.black);
+            label.setText(text);
+        }
+    }
+    
+    private static void clearSubStack () {
+        String name = "LBL_SUBSTACK";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
+        }
+    }
+    
+    private static void setSubStack (String text) {
+        String name = "LBL_SUBSTACK";
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + text);
+        } else {
+            label.setForeground(Color.black);
+            var array = new ArrayList<String>(Arrays.asList(text.split(DATA_SEP)));
+            if (array.size() == 1) {
+                label.setText(text);
+            } else {
+                String response = array.getFirst();
+                for (int ix = 1; ix < array.size(); ix++) {
+                    response += " -> " + array.get(ix);
+                }
+                label.setText(response);
+            }
+        }
+    }
+    
+    private static void updateStateLabel (String text) {
+        String name = "TXT_STATE";
+        if (! text.isEmpty()) {
+            JTextField textField = guiControls.getTextField(name);
+            if (textField == null) {
+                NetComm.print("ERROR: GUI: Invalid textField name: " + name);
+            } else {
+                textField.setForeground(Color.black);
+                textField.setText(text);
+            }
+        }
+    }
+    
+    private static void clearErrorStatus () {
+        String name = "LBL_ERROR";
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setText("");
+        }
+    }
+    
+    public static void setErrorStatus (String text) {
+        String name = "LBL_ERROR";
+        text = "ERROR: " + text;
+        JLabel label = guiControls.getLabel(name);
+        if (label == null) {
+            NetComm.print("ERROR: GUI: Invalid label name: " + name);
+        } else {
+            label.setForeground(Color.red);
+            label.setText(text);
+        }
+        NetComm.print(text);
+    }
+    
+    public static void serverConnected() {
+        setState ("CONNECTED");
+    }
+
+    public static void serverDisconnected() {
+        setState ("DISCONNECTED");
+    }
+
     public static void processMessage(String message) {
         // seperate message into the message type and the message content
         if (message == null || message.isBlank()) {
@@ -869,7 +870,7 @@ public class GuiPanel {
                 break;
             case "LINE:":
                 if (words.size() < 2) {
-                    setStatusError("Missing value for LINE message");
+                    setErrorStatus("Missing value for LINE message");
                     break;
                 }
                 String strValue = words.get(1);
@@ -877,7 +878,7 @@ public class GuiPanel {
                 try {
                     lineNum = Integer.valueOf(strValue);
                 } catch (NumberFormatException ex) {
-                    setStatusError("Invalid Integer value for line: '" + strValue + "'");
+                    setErrorStatus("Invalid Integer value for line: '" + strValue + "'");
                     break;
                 }
                 // TODO: highlight the line number
@@ -893,7 +894,7 @@ public class GuiPanel {
             case "LOGMSG:":
                 // add the log info to the log screen
                 if (msglen < 10) {
-                    setStatusError("Invalid format for LOGMSG command");
+                    setErrorStatus("Invalid format for LOGMSG command");
                     break;
                 }
                 message = message.substring(8);

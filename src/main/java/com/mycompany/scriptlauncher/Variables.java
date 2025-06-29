@@ -533,7 +533,7 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusError("ALLOC command - Invalid type " + entry);
+                        GuiPanel.setErrorStatus("ALLOC command - Invalid type " + entry);
                 }
                 return;
             } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
@@ -543,7 +543,7 @@ public class Variables {
                 return;
             }
         }
-        GuiPanel.setStatusError("ALLOC command - Invalid format: " + message);
+        GuiPanel.setErrorStatus("ALLOC command - Invalid format: " + message);
     }
 
     /**
@@ -570,7 +570,7 @@ public class Variables {
                 String entry = contents.get(ix).strip();
                 int offset = entry.indexOf(' ');
                 if (offset <= 0) {
-                    GuiPanel.setStatusError("VARMSG command - invalid entry format: " + entry);
+                    GuiPanel.setErrorStatus("VARMSG command - invalid entry format: " + entry);
                     return;
                 }
                 String key  = entry.substring(0, offset).strip();
@@ -616,12 +616,12 @@ public class Variables {
                         comp = item;
                         break;
                     default:
-                        GuiPanel.setStatusError("VARMSG command - Invalid key: " + key);
+                        GuiPanel.setErrorStatus("VARMSG command - Invalid key: " + key);
                         return;
                 }
             }
             if (name == null) {
-                GuiPanel.setStatusError("VARMSG command - missing <name> entry");
+                GuiPanel.setErrorStatus("VARMSG command - missing <name> entry");
                 return;
             }
 
@@ -632,7 +632,7 @@ public class Variables {
             if (value == null || sect == null) {
                 // new allocation
                 if (section == null) {
-                    GuiPanel.setStatusError("Missing section header");
+                    GuiPanel.setErrorStatus("Missing section header");
                     return;
                 }
                 VarAccess varInfo = new VarAccess(name, type, owner);
@@ -650,7 +650,7 @@ public class Variables {
                         varLoop.add(varInfo);
                         break;
                     default:
-                        GuiPanel.setStatusError("Invalid section name: " + section);
+                        GuiPanel.setErrorStatus("Invalid section name: " + section);
                 }
             } else {
                 // variable value changed
@@ -714,10 +714,10 @@ public class Variables {
                         break;
                     default:
                         section = null;
-                        GuiPanel.setStatusError("VARMSG command - Invalid section: " + sect);
+                        GuiPanel.setErrorStatus("VARMSG command - Invalid section: " + sect);
                 }
                 if (! bFound) {
-                    GuiPanel.setStatusError(sect + " variable not found: " + name);
+                    GuiPanel.setErrorStatus(sect + " variable not found: " + name);
                 }
             }
         }
