@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
@@ -93,9 +94,12 @@ public class GuiPanel {
         // create the entries in the main frame
         guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT  , false);
         guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT  , true);
+        
         guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT  , false);
         guiControls.makePanel (null, "PNL_BREAKPT"    , "Breakpoints"  , CENTER, false);
+        guiControls.makePanel (null, "PNL_DEBUG"      , "Debug Log"    , CENTER, false);
         guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT , true);
+        
         guiControls.makePanel (null, "PNL_ERROR"      , "Error msgs"   , LEFT  , true);
         guiControls.makePanel (null, "PNL_SUBSTACK"   , "Sub stack"    , LEFT  , true);
         guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT  , true);
@@ -126,6 +130,9 @@ public class GuiPanel {
         guiControls.makeTextField(panel, "TXT_BREAKPT", ""        , LEFT , false, 30, "", true);
         guiControls.makeLabel (panel, "LBL_BREAKPT"  , "OFF"      , LEFT , true);
 
+        panel = "PNL_DEBUG";
+        guiControls.makeCheckbox(panel, "CBX_DEBUGLOG", "Enable Log", LEFT , false, 1);
+        
         panel = "PNL_TERMINATE";
         guiControls.makeButton(panel, "BTN_CLEAR"    , "Clear",     RIGHT, false);
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
@@ -216,6 +223,13 @@ public class GuiPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 NetComm.print("STATUS: COMPILE button pressed");
                 sendMessage("COMPILE");
+                clearErrorStatus();
+            }
+        });
+        (guiControls.getCheckBox("CBX_DEBUGLOG")).addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setDebugLogEnable();
                 clearErrorStatus();
             }
         });
@@ -427,6 +441,13 @@ public class GuiPanel {
         button.setEnabled(true);
     }
 
+    private static void setDebugLogEnable () {
+        JCheckBox logEnable = guiControls.getCheckBox("CBX_DEBUGLOG");
+        boolean enable = logEnable.isSelected();
+        NetComm.print("STATUS: DEBUG set to " + enable);
+        sendMessage("DEBUG " + enable);
+    }
+
     private static void buttonInProcess() {
         disableButton("BTN_CONNECT");
         disableButton("BTN_LOAD");
@@ -530,6 +551,7 @@ public class GuiPanel {
                 clearErrorStatus ();
                 clearCommandLine();
                 clearSubStack();
+                setDebugLogEnable();
                 break;
             case "DISCONNECTED":
                 connected = false;
@@ -634,10 +656,8 @@ public class GuiPanel {
     }
     
     private static void loadScriptButtonActionPerformed(java.awt.event.ActionEvent evt) {
-//        String defaultName = "program";
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Script Files", "scr");
         fileSelector.setFileFilter(filter);
-//        fileSelector.setSelectedFile(new File(defaultName + ".scr"));
         fileSelector.setMultiSelectionEnabled(false);
         fileSelector.setApproveButtonText("Load");
         int retVal = fileSelector.showOpenDialog(guiControls.getFrame());
