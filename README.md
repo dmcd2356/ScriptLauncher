@@ -5,6 +5,7 @@ This program is meant to be a supplemental GUI interface to the _AmazonReader_ p
 The commands (ASCII text) that are sent from client to server are:
 
 >- **_LOAD <filename>_**	- loads a script into memory (where _<filename>_ is the name of the file to load)
+>- **_DEBUG <true/false>_**	- enables/disables debug log messages to be send to client (errors and warnings always sent)
 >- **_COMPILE_**	- compile the script
 >- **_RUN_**	- execute the script
 >- **_STOP_**	- stop the script (if it is running)
@@ -89,6 +90,8 @@ The top portion of the GUI contains the controls and some (hopefully, useful) st
 >- **Step** - this sends a massage to the server to execute just the next line of the script.
 
 >- **Breakpoints Enable / Disable** - the button will allow you to set or clear a line to cause the server to break execution when it gets to that line. The text box to the right of the button lets you specify the line to break on. Note that the server will terminate when it reaches the breakpoint, but hasn't executed it yet.
+
+>- **Debug Log Enable / Disable** - the checkbox will allow you to enable or disable the server from sending all debug log messages it generates to the client. These are the messages that are displayed in the _Debug log_ tab at the bottom of the window. If many log messages are enabled, it can cause a degradation in user response to commands from the network traffic, so disabling them will help reduce this. All error and warning messages are always send to the client, regardless of the enable state.
 
 >- **Terminate** - this sends a command to the server to tell it to exit. This will cause this client to disconnect, and it won't be able to re-connect until the server is restarted.
 
