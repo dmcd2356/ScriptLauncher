@@ -4,7 +4,6 @@
  */
 package com.mycompany.scriptlauncher;
 
-import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

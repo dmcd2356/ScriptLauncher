@@ -65,7 +65,7 @@ public class Script {
     /**
      * clears the display.
      */
-    public static final void clear() {
+    private static final void clear() {
         if (textPane != null) {
             textPane.setText("");
         }
@@ -121,6 +121,9 @@ public class Script {
      * @param file   - the script file contents to display
      */
     public static final void print(File file) {
+        // clear the display contents
+        scriptFile.clear();
+        
         try {
             // read file into array
             FileReader fReader = new FileReader(file);

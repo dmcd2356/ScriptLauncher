@@ -644,7 +644,6 @@ public class GuiPanel {
         if (retVal == JFileChooser.APPROVE_OPTION) {
             // set the file to read from
             File file = fileSelector.getSelectedFile();
-            Script.clear();
             Script.print(file);
             setLabelText("LBL_LOAD", file.getAbsolutePath());
 
@@ -855,7 +854,7 @@ public class GuiPanel {
         if (msgDisplay.length() > 120) {
             msgDisplay = msgDisplay.substring(0, 120) + "...";
         }
-        // output all server messages that do not go to the Debug log window to the Output window.
+        // output all server messages that do not go to the Debug log window to the NetComm window.
         if (! command.contentEquals("LOGMSG:")) {
             NetComm.print("SERVER: " + message);
         }
