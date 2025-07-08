@@ -27,7 +27,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  *
  * @author dmcd2356
  */
-public class GuiPanel {
+public class GuiMain {
     /*
     * This class handles creating and updating the Graphical User Interface.
     */
@@ -95,14 +95,14 @@ public class GuiPanel {
         guiControls.makePanel (null, "PNL_CONNECT"    , "Connection"   , LEFT  , false);
         guiControls.makePanel (null, "PNL_SCRIPT"     , "Script File"  , LEFT  , true);
         
-        guiControls.makePanel (null, "PNL_CONTROL"    , "Controls"     , LEFT  , false);
+        guiControls.makePanel (null, "PNL_CONTROL"    , "Run Controls" , LEFT  , false);
         guiControls.makePanel (null, "PNL_BREAKPT"    , "Breakpoints"  , CENTER, false);
-        guiControls.makePanel (null, "PNL_DEBUG"      , "Debug Log"    , CENTER, false);
-        guiControls.makePanel (null, "PNL_TERMINATE"  , ""             , RIGHT , true);
+        guiControls.makePanel (null, "PNL_DEBUG"      , "Panel Actions", CENTER, false);
+        guiControls.makePanel (null, "PNL_TERMINATE"  , "Server"       , RIGHT , true);
         
-        guiControls.makePanel (null, "PNL_ERROR"      , "Error msgs"   , LEFT  , true);
-        guiControls.makePanel (null, "PNL_SUBSTACK"   , "Sub stack"    , LEFT  , true);
-        guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command" , LEFT  , true);
+        guiControls.makePanel (null, "PNL_ERROR"      , "Error messages"  , LEFT  , true);
+        guiControls.makePanel (null, "PNL_SUBSTACK"   , "Subroutine stack", LEFT  , true);
+        guiControls.makePanel (null, "PNL_COMMAND"    , "Next Command"    , LEFT  , true);
 
         var statPanel = guiControls.getPanel ("PNL_ERROR");
         statPanel.setMinimumSize(new Dimension(1200, 40));
@@ -111,8 +111,8 @@ public class GuiPanel {
 
         panel = "PNL_CONNECT";
         guiControls.makeButton   (panel, "BTN_CONNECT", "Connect"     , LEFT, false);
-        guiControls.makeTextField(panel, "TXT_PORT"   , "", LEFT, false, 50, Integer.toString(port), true);
-        guiControls.makeTextField(panel, "TXT_STATE"  , "", LEFT, true , 160, "", false);
+        guiControls.makeTextField(panel, "TXT_PORT"   , "Port", LEFT, false, 50, Integer.toString(port), true);
+        guiControls.makeTextField(panel, "TXT_STATE"  , "State", LEFT, true , 160, "", false);
 
         panel = "PNL_SCRIPT";
         guiControls.makeButton(panel, "BTN_LOAD"      , "Load"        , LEFT, false);
@@ -131,10 +131,10 @@ public class GuiPanel {
         guiControls.makeLabel (panel, "LBL_BREAKPT"  , "OFF"      , LEFT , true);
 
         panel = "PNL_DEBUG";
-        guiControls.makeCheckbox(panel, "CBX_DEBUGLOG", "Enable Log", LEFT , false, 1);
+        guiControls.makeButton  (panel, "BTN_CLEAR"   , "Clear Panel", RIGHT, false);
+        guiControls.makeCheckbox(panel, "CBX_DEBUGLOG", "Enable Log" , LEFT , true, 1);
         
         panel = "PNL_TERMINATE";
-        guiControls.makeButton(panel, "BTN_CLEAR"    , "Clear",     RIGHT, false);
         guiControls.makeButton(panel, "BTN_EXIT"     , "Terminate", RIGHT, true);
 
         panel = "PNL_ERROR";

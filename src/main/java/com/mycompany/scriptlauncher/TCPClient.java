@@ -72,7 +72,7 @@ public class TCPClient {
                 }
             }
             NetComm.print("STATUS: Successfully connected to the TCP server on port " + tcpPort);
-            GuiPanel.serverConnected();
+            GuiMain.serverConnected();
 
             // Set up input and output streams for communication
             try {
@@ -94,10 +94,10 @@ public class TCPClient {
             try {
                 while (message != null && socket != null && !socket.isClosed()) {
                     message = in_socket.readLine();
-                    GuiPanel.processMessage(message);
+                    GuiMain.processMessage(message);
                 }
                 NetComm.print("STATUS: Port " + tcpPort + " has been closed.");
-                GuiPanel.serverDisconnected();
+                GuiMain.serverDisconnected();
             } catch (IOException exMsg) {
                 if (! socket.isClosed()) {
                     exMsg.printStackTrace();

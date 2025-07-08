@@ -53,7 +53,7 @@ public class FileSaver extends Thread {
                     writer.write(message + System.getProperty("line.separator"));
                     writer.flush();
                 } catch (InterruptedException ex) {
-                    GuiPanel.setErrorStatus ("FileSaver: InterruptedException");
+                    GuiMain.setErrorStatus ("FileSaver: InterruptedException");
                     NetComm.print("ERROR: FileSaver: " + ex.getMessage());
                 }
             }

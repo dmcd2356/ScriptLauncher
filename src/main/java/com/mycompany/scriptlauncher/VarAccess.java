@@ -90,7 +90,7 @@ public class VarAccess {
             }
         }
         // report invalid type
-        GuiPanel.setErrorStatus("VarAccess: Invalid variable type: " + type);
+        GuiMain.setErrorStatus("VarAccess: Invalid variable type: " + type);
         return VarType.String;
     }
     
@@ -215,14 +215,14 @@ public class VarAccess {
                 try {
                     Integer.valueOf(value);
                 } catch (NumberFormatException exMsg) {
-                    GuiPanel.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
+                    GuiMain.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
                     return;
                 }
                 break;
             case Boolean:
                 // if value not boolean value, indicate error and exit
                 if (! value.equalsIgnoreCase("TRUE") && ! value.equalsIgnoreCase("FALSE")) {
-                    GuiPanel.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
+                    GuiMain.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
                     return;
                 }
                 break;
@@ -258,7 +258,7 @@ public class VarAccess {
             Integer.valueOf(end);
             Integer.valueOf(step);
         } catch (NumberFormatException exMsg) {
-            GuiPanel.setErrorStatus("VarAccess: Variable '" + this.varName + "' contains non-Integer value");
+            GuiMain.setErrorStatus("VarAccess: Variable '" + this.varName + "' contains non-Integer value");
             return;
         }
         this.bChanged  = true;
@@ -285,7 +285,7 @@ public class VarAccess {
      */
     public void setValueArrayEntry (int index, String value) {
         if (index < 0) {
-            GuiPanel.setErrorStatus("VarAccess: negative index value set for parameter: " + this.varName);
+            GuiMain.setErrorStatus("VarAccess: negative index value set for parameter: " + this.varName);
             return;
         }
         switch (this.varType) {
@@ -305,7 +305,7 @@ public class VarAccess {
                 this.strValue = strArray.toString();
                 break;
             default:
-                GuiPanel.setErrorStatus("VarAccess: setValueArrayEntry() called on non-array parameter: " + this.varType);
+                GuiMain.setErrorStatus("VarAccess: setValueArrayEntry() called on non-array parameter: " + this.varType);
                 break;
         }
     }
@@ -318,11 +318,11 @@ public class VarAccess {
      */
     public void insertValueArrayEntry (int index, String value) {
         if (value == null) {
-            GuiPanel.setErrorStatus("VarAccess: null val set for parameter: " + this.varName);
+            GuiMain.setErrorStatus("VarAccess: null val set for parameter: " + this.varName);
             return;
         }
         if (index < 0) {
-            GuiPanel.setErrorStatus("VarAccess: negative index value set for parameter: " + this.varName);
+            GuiMain.setErrorStatus("VarAccess: negative index value set for parameter: " + this.varName);
             return;
         }
         switch (this.varType) {
@@ -336,7 +336,7 @@ public class VarAccess {
                 this.strValue = strArray.toString();
                 break;
             default:
-                GuiPanel.setErrorStatus("VarAccess: insertValueArrayEntry() called on non-array parameter: " + this.varType);
+                GuiMain.setErrorStatus("VarAccess: insertValueArrayEntry() called on non-array parameter: " + this.varType);
                 break;
         }
     }

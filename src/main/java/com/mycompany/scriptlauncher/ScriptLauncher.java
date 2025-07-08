@@ -39,7 +39,7 @@ public class ScriptLauncher {
         }
 
         // start the debug message panel
-        GuiPanel gui = new GuiPanel();
+        GuiMain gui = new GuiMain();
         gui.createDebugPanel(CLASS_NAME, port);
     }
   
