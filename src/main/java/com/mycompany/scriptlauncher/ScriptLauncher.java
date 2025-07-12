@@ -27,7 +27,7 @@ public class ScriptLauncher {
      */
     public static void main(String[] args) throws IOException {
         PropertiesFile props = new PropertiesFile();
-        String strPort = props.getPropertiesItem("Port", Integer.toUnsignedString(SERVER_PORT));
+        String strPort = PropertiesFile.getPropertiesItem("Port", Integer.toUnsignedString(SERVER_PORT));
         int port = Integer.parseInt(strPort);
         if (args.length > 0) {
             try {

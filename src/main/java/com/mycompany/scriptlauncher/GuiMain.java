@@ -36,7 +36,6 @@ public class GuiMain {
     public static final String DATA_SEP = "::";
     
     private final static GuiControls  guiControls = new GuiControls();
-    private static PropertiesFile props;
     private static JTabbedPane    tabPanel;
     private static JTextPane      debugPane;
     private static JTextPane      scriptPane;
@@ -375,8 +374,7 @@ public class GuiMain {
         Variables.init(varPane, varScrollPanel);
 
         // check for a properties file
-        props = new PropertiesFile();
-        String scrfileName = props.getPropertiesItem("ScriptFile", "");
+        String scrfileName = PropertiesFile.getPropertiesItem("ScriptFile", "");
         if (!scrfileName.isEmpty()) {
               fileSelector.setCurrentDirectory(new File(scrfileName));
         }
@@ -671,7 +669,7 @@ public class GuiMain {
             sendMessage("LOAD " + file.getAbsolutePath());
             
             // update the directory selection in the Properties file
-            props.setPropertiesItem("ScriptFile", file.getAbsolutePath());
+            PropertiesFile.setPropertiesItem("ScriptFile", file.getAbsolutePath());
             
             Logger.clear();
             Variables.clear();

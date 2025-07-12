@@ -28,7 +28,7 @@ public class PropertiesFile {
     final static private String PROPERTIES_PATH = ".scriptlauncher/";
     final static private String PROPERTIES_FILE = "site.properties";
 
-    private Properties   props;
+    private static Properties   props;
 
     PropertiesFile () {
 
@@ -78,7 +78,7 @@ public class PropertiesFile {
         }
     }
 
-    public String getPropertiesItem (String tag, String dflt) {
+    public static String getPropertiesItem (String tag, String dflt) {
         if (props == null || tag == null || tag.isEmpty()) {
             return dflt;
         }
@@ -93,7 +93,7 @@ public class PropertiesFile {
         return value;
     }
 
-    public void setPropertiesItem (String tag, String value) {
+    public static void setPropertiesItem (String tag, String value) {
         // save changes to properties file
         if (props == null || tag == null || tag.isEmpty()) {
             return;

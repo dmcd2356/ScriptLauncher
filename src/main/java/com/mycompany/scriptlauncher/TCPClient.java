@@ -43,8 +43,7 @@ public class TCPClient {
         
         // Connect to the server at localhost on specified port
         tcpPort = port;
-        PropertiesFile props = new PropertiesFile();
-        props.setPropertiesItem("Port", Integer.toUnsignedString(port));
+        PropertiesFile.setPropertiesItem("Port", Integer.toUnsignedString(port));
         NetComm.print("STATUS: Checking for TCP connection on port " + tcpPort + "...");
         connectThread.start();
     }
