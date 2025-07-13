@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.scriptlauncher;
+package com.scriptlauncher;
 
 import java.awt.Color;
 
@@ -24,16 +24,32 @@ public class FontInfo {
         LtBlue, Blue, Violet, DkVio;
     }
 
-    public TextColor  color;      // the font color
-    public FontType   fonttype;   // the font attributes (e.g. Italics, Bold,..)
-    public String     font;       // the font family (e.g. Courier)
-    public int        size;       // the font size
+    private TextColor  color;      // the font color
+    private FontType   fonttype;   // the font attributes (e.g. Italics, Bold,..)
+    private String     font;       // the font family (e.g. Courier)
+    private int        size;       // the font size
 
     FontInfo (TextColor col, FontType type, int fsize, String fontname) {
         color = col;
         fonttype = type;
         font = fontname;
         size = fsize;
+    }
+
+    public TextColor getColor() {
+        return color;
+    }
+    
+    public FontType getFontType() {
+        return fonttype;
+    }
+    
+    public String getFont() {
+        return font;
+    }
+    
+    public int getSize() {
+        return size;
     }
     
     /**

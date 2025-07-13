@@ -1,4 +1,4 @@
-package com.mycompany.scriptlauncher;
+package com.scriptlauncher;
 
 
 import javax.swing.JTextPane;
@@ -78,10 +78,10 @@ public class TextWriter {
 
             // get the color and font for the specified type
             if (fontInfo != null) {
-                color = fontInfo.color;
-                ftype = fontInfo.fonttype;
-                font  = fontInfo.font;
-                size  = fontInfo.size;
+                color = fontInfo.getColor();
+                ftype = fontInfo.getFontType();
+                font  = fontInfo.getFont();
+                size  = fontInfo.getSize();
             }
 
             appendToPane(textPane, text, color, font, size, ftype);

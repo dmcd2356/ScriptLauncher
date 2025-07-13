@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.scriptlauncher;
+package com.scriptlauncher;
 
 import java.awt.Graphics;
 import java.util.HashMap;
@@ -12,14 +12,14 @@ import javax.swing.JTextPane;
  *
  * @author dan
  */
-public class NetComm {
+public class Output {
     
     /*
     * This class handles receiving the Log messages from the network and displaying
     *  the contents on the Log Pane.
     */
     
-    private static final int    FONT_SIZE = 11;
+    private static final int    FONT_SIZE = 14;
     private static final String FONT_TYPE = "Courier";
     
     private static JTextPane textPane = null;
