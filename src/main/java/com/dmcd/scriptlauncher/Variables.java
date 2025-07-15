@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.scriptlauncher;
+package com.dmcd.scriptlauncher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -537,7 +537,8 @@ public class Variables {
                 return;
             } else if (message.charAt(0) == '[' && message.charAt(message.length()-1) == ']') {
                 message = message.substring(1, message.length()-1);
-                var array = new ArrayList<String>(Arrays.asList(message.split(GuiMain.DATA_SEP)));
+                String dataSeparator = GuiMain.getDataSeparator();
+                var array = new ArrayList<String>(Arrays.asList(message.split(dataSeparator)));
                 allocationEntryMsg (array);
                 return;
             }
@@ -568,12 +569,14 @@ public class Variables {
             for (int ix = 0; ix < contents.size(); ix++) {
                 String entry = contents.get(ix).strip();
                 int offset = entry.indexOf(' ');
-                if (offset <= 0) {
-                    GuiMain.setErrorStatus("VARMSG command - invalid entry format: " + entry);
-                    return;
+                String key, item;
+                if (offset > 0) {
+                    key  = entry.substring(0, offset).strip();
+                    item = entry.substring(offset).strip();
+                } else {
+                    key = entry.strip();
+                    item = "\"\"";
                 }
-                String key  = entry.substring(0, offset).strip();
-                String item = entry.substring(offset).strip();
                 switch (key) {
                     case "<section>":
                         sect = item;
@@ -628,7 +631,7 @@ public class Variables {
             // allocation omits this and just provides a header preceding the variables
             //  that define the applicable section, which is saved in the global 'section'.
             // if neither are found, we have an error.
-            if (value == null || sect == null) {
+            if (sect == null) {
                 // new allocation
                 if (section == null) {
                     GuiMain.setErrorStatus("Missing section header");
@@ -654,6 +657,9 @@ public class Variables {
             } else {
                 // variable value changed
                 boolean bFound = false;
+                if (value == null) {
+                    value = "\"\"";
+                }
                 switch (sect) {
                     case "RESERVED":
                         for (int varIx = 0; varIx < varReserved.size(); varIx++) {

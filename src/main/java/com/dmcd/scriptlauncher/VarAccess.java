@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.scriptlauncher;
+package com.dmcd.scriptlauncher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,11 +40,19 @@ public class VarAccess {
 
     // this is called during allocation to define the variable type and access info
     VarAccess (String varName, String varType, String owner) {
-        this.bInit     = false;
-        this.bChanged  = false;
         this.varName   = varName;
         this.varType   = findVarType(varType);
         this.owner     = owner;  // (only for LOCAL & GLOBAL)
+
+        resetVarInfo();
+        this.bInit     = false;
+        this.bChanged  = false;
+    }
+
+    // re-init the data values & indicate data has changed
+    public final void resetVarInfo() {
+        this.bInit     = false;
+        this.bChanged  = true;
 
         // these hold who last wrote to the variable and when (only for LOCAL & GLOBAL)
         this.writer    = null;
@@ -80,7 +88,7 @@ public class VarAccess {
                 break;
         }
     }
-
+    
     public static VarType findVarType (String type) {
         if (type != null) {
             for (VarType entry : VarType.values()) {
@@ -125,46 +133,6 @@ public class VarAccess {
         this.bChanged = false;
     }
 
-    // re-init the data values & indicate data has changed
-    public void resetVarInfo() {
-        this.bInit     = false;
-        this.bChanged  = true;
-
-        // these hold who last wrote to the variable and when (only for LOCAL & GLOBAL)
-        this.writer    = null;
-        this.writeLine = null;
-        this.writeTime = null;
-
-        // these will hold the data value
-        this.strValue  = null;
-        this.strArray  = null;
-
-        // these hold loop-specific entries
-        this.start     = null;
-        this.end       = null;
-        this.step      = null;
-        this.incl      = null;
-        this.comp      = null;
-        
-        // init the value of the chosen type
-        switch (this.varType) {
-            case Integer:
-            case Unsigned:
-                this.strValue = "0";
-                break;
-            case Boolean:
-                this.strValue = "false";
-                break;
-            case String:
-                this.strValue = "";
-                break;
-            case StrArray:
-            case IntArray:
-                this.strArray = new ArrayList<>();
-                break;
-        }
-    }
-    
     // returns the last writer (MAIN or subroutine) to the variable
     public String getWriter () {
         return (this.writer == null) ? "----" : this.writer;
@@ -206,6 +174,10 @@ public class VarAccess {
         
     // these are the functions to set the value of the variable
     public void setValueString (String value, String subName, String line, String time) {
+        // if value is empty string, we didn't really have a value change
+        if (value.isEmpty() || value.contentEquals("\"\"")) {
+            return;
+        }
         switch (this.varType) {
             case String:
                 break;
@@ -222,7 +194,7 @@ public class VarAccess {
             case Boolean:
                 // if value not boolean value, indicate error and exit
                 if (! value.equalsIgnoreCase("TRUE") && ! value.equalsIgnoreCase("FALSE")) {
-                    GuiMain.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Integer: " + value);
+                    GuiMain.setErrorStatus("VarAccess: Variable '" + this.varName + "' value is not valid Boolean: " + value);
                     return;
                 }
                 break;

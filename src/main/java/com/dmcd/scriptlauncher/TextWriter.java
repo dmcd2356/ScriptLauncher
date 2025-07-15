@@ -1,4 +1,4 @@
-package com.scriptlauncher;
+package com.dmcd.scriptlauncher;
 
 
 import javax.swing.JTextPane;

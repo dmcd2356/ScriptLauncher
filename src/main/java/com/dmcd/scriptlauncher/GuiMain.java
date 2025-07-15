@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.scriptlauncher;
+package com.dmcd.scriptlauncher;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -33,7 +33,8 @@ public class GuiMain {
     */
 
     // the chars used to seperate entries in reporting variable contents to the client
-    public static final String DATA_SEP = "::";
+    // This must be the same definition as used by the AmazonReader project
+    private static final String DATA_SEP = "::";
     
     private final static GuiControls  guiControls = new GuiControls();
     private static JTabbedPane    tabPanel;
@@ -63,6 +64,11 @@ public class GuiMain {
         OUTPUT,
         LOGGER,
         NETCOMM,
+    }
+
+    // This must be the same definition as used by the AmazonReader project
+    public static String getDataSeparator() {
+        return DATA_SEP;
     }
     
     /**
@@ -514,9 +520,13 @@ public class GuiMain {
             setErrorStatus(state.substring(7));
             state = "EOF";
         }
-        
-        JButton button;
-        JLabel label;
+
+        String addendum = "";
+        int offset = state.indexOf(' ');
+        if (offset > 0) {
+            addendum = state.substring(offset).strip();
+            state = state.substring(0, offset);
+        }
         switch (state) {
             case "STARTUP":
                 procState = ProcState.STARTUP;
@@ -615,7 +625,7 @@ public class GuiMain {
                 enableButton("BTN_STEP");
                 enableButton("BTN_PAUSE");
                 setButtonText("BTN_PAUSE", "Resume");
-                setButtonText("BTN_RUN", "Stop");
+                setButtonText("BTN_RUN", "Run");
                 buttonComplete();
                 break;
             case "RESUMED":
@@ -627,11 +637,24 @@ public class GuiMain {
                 setButtonText("BTN_PAUSE", "Pause");
                 setButtonText("BTN_RUN", "Stop");
                 break;
-            case "BREAKPT SET":
+            case "BREAKPT":
+                switch (addendum) {
+                    case "ERROR":
+                        setErrorStatus("Breakpoint is invalid format or range");
+                        breakpointUnset();
+                        break;
+                    case "INVALID":
+                        setErrorStatus("Breakpoint is not an executable line");
+                        breakpointUnset();
+                        break;
+                    case "SET":
+                        // just continue
+                        break;
+                    default:
+                        break;
+                }
                 break;
-            case "BREAKPT INVALID":
-                breakpointUnset();
-                break;
+
             case "ERROR":
                 if (procState == ProcState.RUNNING) {
                     procState = ProcState.COMPILED;
@@ -869,9 +892,9 @@ public class GuiMain {
         int msglen = message.length();
 
         String msgDisplay = message;
-        if (msgDisplay.length() > 120) {
-            msgDisplay = msgDisplay.substring(0, 120) + "...";
-        }
+//        if (msgDisplay.length() > 120) {
+//            msgDisplay = msgDisplay.substring(0, 120) + "...";
+//        }
         // output all server messages that do not go to the Debug log window to the NetComm window.
         if (! command.contentEquals("LOGMSG:")) {
             NetComm.print("SERVER: " + message);

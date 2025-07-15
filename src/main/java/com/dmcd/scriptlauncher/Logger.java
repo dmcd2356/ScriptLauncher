@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.scriptlauncher;
+package com.dmcd.scriptlauncher;
 
 import java.awt.Graphics;
 import java.util.HashMap;
@@ -85,7 +85,7 @@ public class Logger {
 
             TextWriter.print(textPane, false, prefixFont, countstr + " ");
             TextWriter.print(textPane, false, prefixFont, timestamp + " ");
-            TextWriter.print(textPane, true, msgFont, typestr + ": " + content);
+            TextWriter.print(textPane, true, msgFont, typestr + " " + content);
         }
     }
 
